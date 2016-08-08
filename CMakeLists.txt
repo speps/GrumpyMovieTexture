@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.5)
 project(GrumpyMovieTexture)
 
 function(prefix_path var prefix)
@@ -8,10 +8,6 @@ function(prefix_path var prefix)
    endforeach(f)
    set(${var} "${listvar}" PARENT_SCOPE)
 endfunction(prefix_path)
-
-if(IOS)
-   add_compile_options(-std=c++11)
-endif()
 
 add_subdirectory(External)
 add_subdirectory(Sources)

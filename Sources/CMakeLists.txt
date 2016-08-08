@@ -12,6 +12,11 @@ set(GMT_SOURCES
 	VideoPlayer.h
 	VideoPlayerInterface.cpp
 )
+
+if(IOS)
+	add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-std=c++11>)
+endif()
+
 add_library(GrumpyMovieTexture SHARED ${GMT_SOURCES})
 target_compile_definitions(GrumpyMovieTexture PRIVATE GLEW_STATIC)
 target_link_libraries(GrumpyMovieTexture libogg libtheora libvorbis opengl32.lib)
