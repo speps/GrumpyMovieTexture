@@ -55,7 +55,7 @@ install:
   - export PATH="`pwd`/_ci/cmake/bin:${PATH}"
 
   # Installed if toolchain is Android (otherwise directory doesn't exist)
-  - export ANDROID_NDK_r10e="`pwd`/_ci/android-ndk-r10e"
+  #- export ANDROID_NDK_r10e="`pwd`/_ci/android-ndk-r10e"
 
 script:
   - build.py --toolchain ${TOOLCHAIN} --config ${CONFIG} --verbose ${EXTRA}
