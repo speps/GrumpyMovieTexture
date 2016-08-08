@@ -9,6 +9,10 @@ function(prefix_path var prefix)
    set(${var} "${listvar}" PARENT_SCOPE)
 endfunction(prefix_path)
 
+if(IOS)
+   add_compile_options(-std=c++11)
+endif()
+
 add_subdirectory(External)
 add_subdirectory(Sources)
 

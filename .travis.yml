@@ -47,6 +47,7 @@ install:
   - POLLY_ROOT="`pwd`/polly-master"
 
   - export PATH="${POLLY_ROOT}/bin:${PATH}"
+  - export XCODE_XCCONFIG_FILE="${POLLY_ROOT}/scripts/NoCodeSign.xcconfig"
 
   # Install dependencies (CMake, Android NDK)
   - install-ci-dependencies.py
