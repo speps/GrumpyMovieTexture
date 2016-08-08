@@ -1,0 +1,17 @@
+*.docstates
+*.cachefile
+*.suo
+*.cd
+*.user
+*.ncb
+*.pdb
+*.ilk
+*.sdf
+*.pam
+*.vspscc
+*.trace
+Thumbs.db
+Work/
+Build/
+Library/
+Temp/
