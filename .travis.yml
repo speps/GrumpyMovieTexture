@@ -59,7 +59,7 @@ install:
   #- export ANDROID_NDK_r10e="`pwd`/_ci/android-ndk-r10e"
 
 script:
-  - build.py --toolchain ${TOOLCHAIN} --config ${CONFIG} --verbose --install ${EXTRA}
+  - build.py --toolchain ${TOOLCHAIN} --config ${CONFIG} --verbose ${EXTRA}
 
 # deploy:
 #   provider: bintray
