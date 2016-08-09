@@ -9,7 +9,6 @@ function(prefix_path var prefix)
    set(${var} "${listvar}" PARENT_SCOPE)
 endfunction(prefix_path)
 
-add_subdirectory(External)
 add_subdirectory(Sources)
 
 if(MSVC)
