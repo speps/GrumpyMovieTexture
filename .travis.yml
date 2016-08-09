@@ -27,7 +27,7 @@ addons:
       - g++-4.8
 
 env:
-  - TOOLCHAIN=ios-nocodesign CONFIG=Release EXTRA="--iossim"
+  - TOOLCHAIN=ios-nocodesign CONFIG=Release EXTRA="--iossim --ios-multiarch --ios-combined"
 
 install:
   # Info about OS
