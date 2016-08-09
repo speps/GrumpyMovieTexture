@@ -59,5 +59,12 @@ install:
   #- export ANDROID_NDK_r10e="`pwd`/_ci/android-ndk-r10e"
 
 script:
-  - build.py --toolchain ${TOOLCHAIN} --config ${CONFIG} --verbose ${EXTRA}
+  - build.py --toolchain ${TOOLCHAIN} --config ${CONFIG} --verbose --install ${EXTRA}
 
+# deploy:
+#   provider: bintray
+#   file: .bintray.json
+#   user: speps
+#   dry-run: true
+#   key:
+#     secure: DG49j2AIMm6ga/lM8XaZ0QGXrciG2t5FQJRtvFY3ujMrJvcu6q3WO2Bnmzvh/RiiOpXAZ7MLEXaJKS0/iE7RshE58lAOS7D3lzuDBQphhkem/tpM9tRc8/3VL07dwB6h2KrCs1u0WEC/qJdE5SyF2eu/43dkng+ctcYUSKFff0yL+wDRTNuo/C+xA2buoNeUN+2R/xJrfEBDX3pxQ+UjBYENbCTIvamJ5N1nWMXqCEP5j6x2DmT/x0WTGJMzQ2amNVsuD6usL/WLJb4BnhnaQhsMuFnLHxQZSzDNsTiV5yl52xD0ITtsIUOgGW5zjR0h9Nth1iM6JeeUfDbiYjJcNQpYQD28LnUk2sTgxYF/ey1JvN8buKUkVcPxgneLbJdKGo+UgpIUtYn8kUAvcCUjTjc1zrqKT+cpuaSkb6WI9U3qqMZU3OjORnBO4HVFxBFAP6BL4P2Sc08hcw8f568xFIWx1maA0+/go6hBa1WKe3PYbUcjh2LGIhEgTkLiTH//xWaxHbUkcWSZLelJyy8FfbgNtMbWIGFk4JSq/owO5cem64bBpZrO3vuO3ewyDrPfn1QPSLo7kKjDvs5nVI0Z7IMynFyzv6KcKSwGmLPHhySj/Cv33vey+Ua/chwHx/Gl8w7W+acl/Wnq7ZAaAnvW79mGovqJcmOd/TguryOqUp8=

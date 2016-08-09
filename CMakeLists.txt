@@ -9,6 +9,7 @@ function(prefix_path var prefix)
    set(${var} "${listvar}" PARENT_SCOPE)
 endfunction(prefix_path)
 
+set(CMAKE_INSTALL_PREFIX "${PROJECT_SOURCE_DIR}/_install/${POLLY_TOOLCHAIN_TAG}")
 add_subdirectory(Sources)
 
 if(MSVC)
