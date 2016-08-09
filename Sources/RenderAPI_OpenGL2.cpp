@@ -17,13 +17,11 @@ public:
 
     virtual void ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces) {}
 
-    virtual void UpdateTexture(void* handle, int width, int height, int rowPitch, uint8_t* data)
+    virtual void UpdateTexture(void* handle, int width, int height, uint8_t* data)
     {
         GLuint gltex = (GLuint)(size_t)(handle);
         glBindTexture(GL_TEXTURE_2D, gltex);
-        glPixelStorei(GL_UNPACK_ROW_LENGTH, rowPitch);
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_LUMINANCE, GL_UNSIGNED_BYTE, data);
-        glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_ALPHA, GL_UNSIGNED_BYTE, data);
         glBindTexture(GL_TEXTURE_2D, 0);
     }
 };

@@ -226,27 +226,14 @@ void VideoPlayer::pushAudioFrame()
 
 void VideoPlayer::initVideo()
 {
-    int width = _oggState.theoraInfo.frame_width;
-    int height = _oggState.theoraInfo.frame_height;
-    int subWidth = width;
-    int subHeight = height;
-
-    switch (_oggState.theoraInfo.pixel_fmt)
+    for (int i = 0; i < 3; i++)
     {
-    case TH_PF_420:
-        subHeight >>= 1;
-    case TH_PF_422:
-        subWidth >>= 1;
+        _bufferTextures[i] = nullptr;
     }
-
-    _bufferTextures[0] = _textureCallback(0, width, height);
-    _bufferTextures[1] = _textureCallback(1, subWidth, subHeight);
-    _bufferTextures[2] = _textureCallback(2, subWidth, subHeight);
 }
 
 void VideoPlayer::shutVideo()
 {
-    
 }
 
 void VideoPlayer::pushVideoFrame()
@@ -258,7 +245,6 @@ void VideoPlayer::pushVideoFrame()
     LOG("video time %f time %f\n", _videoTime, _timer);
 
     // Push new frame
-    //if (_videoTime >= _timer)
     {
         std::unique_ptr<VideoFrame> frame(new VideoFrame());
         frame->time = _videoTime;
@@ -318,8 +304,15 @@ void VideoPlayer::processVideo()
         {
             const VideoBuffer& buffer = frameToDisplay->buffer[i];
             extern RenderAPI* s_CurrentAPI;
-            LOG("Update %dx%d %p\n", buffer.width, buffer.height, frameToDisplay->data[i].get());
-            s_CurrentAPI->UpdateTexture(_bufferTextures[i], buffer.width, buffer.height, buffer.stride, frameToDisplay->data[i].get());
+            if (_bufferTextures[i] == nullptr)
+            {
+                _bufferTextures[i] = _textureCallback(i, buffer.stride, buffer.height);
+            }
+            if (_bufferTextures[i] != nullptr)
+            {
+                LOG("Update %d(s=%d)x%d %p\n", buffer.width, buffer.stride, buffer.height, frameToDisplay->data[i].get());
+                s_CurrentAPI->UpdateTexture(_bufferTextures[i], buffer.stride, buffer.height, frameToDisplay->data[i].get());
+            }
         }
 
         _timeLastFrame = frameToDisplay->time;
@@ -588,32 +581,3 @@ void VideoPlayer::update(float timeStep)
     }
     processVideo();
 }
-
-//void VideoPlayer::render(RenderTarget& rt)
-//{
-//    if (_state == VideoPlayerState::None)
-//    {
-//        return;
-//    }
-//
-//    GraphicsDevice::instance().identity();
-//    GraphicsDevice::instance().setRenderTarget(&rt);
-//
-//    if(_glMutex.tryLock())
-//    {
-//    if (_bufferTextures[0] != NULL && _bufferTextures[1] != NULL && _bufferTextures[2] != NULL)
-//    {
-//        GraphicsDevice::instance().apply(_shader);
-//        GraphicsDevice::instance().clear(Color::Black);
-//
-//        GraphicsDevice::instance().paramFP(SName("bufferY")).set(*_bufferTextures[0]);
-//        GraphicsDevice::instance().paramFP(SName("bufferCb")).set(*_bufferTextures[1]);
-//        GraphicsDevice::instance().paramFP(SName("bufferCr")).set(*_bufferTextures[2]);
-//
-//        GraphicsDevice::instance().renderQuad(Matrix3f::Identity, BlendingMode::Normal, Color::White, rt.width(), rt.height());
-//    }
-//    }
-//    _glMutex.release();
-//
-//    GraphicsDevice::instance().setRenderTarget(NULL);
-//}

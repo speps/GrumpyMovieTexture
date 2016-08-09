@@ -28,7 +28,7 @@ public:
         }
     }
 
-    virtual void UpdateTexture(void* handle, int width, int height, int rowPitch, uint8_t* data)
+    virtual void UpdateTexture(void* handle, int width, int height, uint8_t* data)
     {
         ID3D11Texture2D* d3dtex = (ID3D11Texture2D*)handle;
         if (d3dtex == nullptr)
@@ -38,7 +38,7 @@ public:
 
         ID3D11DeviceContext* ctx = nullptr;
         m_Device->GetImmediateContext(&ctx);
-        ctx->UpdateSubresource(d3dtex, 0, nullptr, data, rowPitch, 0);
+        ctx->UpdateSubresource(d3dtex, 0, nullptr, data, width, 0);
         ctx->Release();
     }
 

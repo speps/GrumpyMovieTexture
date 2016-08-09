@@ -11,59 +11,33 @@ public class VideoPlayer : MonoBehaviour
     public delegate IntPtr CreateTextureCallback(int index, int width, int height);
 
 #if UNITY_IPHONE && !UNITY_EDITOR
-    [DllImport ("__Internal")]
+    public const string DLLName = "__Internal";
 #else
-    [DllImport("GrumpyMovieTexture")]
+    public const string DLLName = "GrumpyMovieTexture";
 #endif
+
+    [DllImport(DLLName)]
     private static extern IntPtr VPCreate();
 
-#if UNITY_IPHONE && !UNITY_EDITOR
-    [DllImport ("__Internal")]
-#else
-    [DllImport("GrumpyMovieTexture")]
-#endif
+    [DllImport(DLLName)]
     private static extern void VPDestroy(IntPtr player);
 
-#if UNITY_IPHONE && !UNITY_EDITOR
-    [DllImport ("__Internal")]
-#else
-    [DllImport("GrumpyMovieTexture")]
-#endif
+    [DllImport(DLLName)]
     private static extern void VPPlay(IntPtr player);
 
-#if UNITY_IPHONE && !UNITY_EDITOR
-    [DllImport ("__Internal")]
-#else
-    [DllImport("GrumpyMovieTexture")]
-#endif
+    [DllImport(DLLName)]
     private static extern bool VPIsPlaying(IntPtr player);
 
-#if UNITY_IPHONE && !UNITY_EDITOR
-    [DllImport ("__Internal")]
-#else
-    [DllImport("GrumpyMovieTexture")]
-#endif
+    [DllImport(DLLName)]
     private static extern void VPStop(IntPtr player);
 
-#if UNITY_IPHONE && !UNITY_EDITOR
-    [DllImport ("__Internal")]
-#else
-    [DllImport("GrumpyMovieTexture")]
-#endif
+    [DllImport(DLLName)]
     private static extern bool VPIsStopped(IntPtr player);
 
-#if UNITY_IPHONE && !UNITY_EDITOR
-    [DllImport ("__Internal")]
-#else
-    [DllImport("GrumpyMovieTexture")]
-#endif
+    [DllImport(DLLName)]
     private static extern bool VPOpen(IntPtr player, DataCallback dataCallback, CreateTextureCallback textureCallback);
 
-#if UNITY_IPHONE && !UNITY_EDITOR
-    [DllImport ("__Internal")]
-#else
-    [DllImport("GrumpyMovieTexture")]
-#endif
+    [DllImport(DLLName)]
     private static extern void VPUpdate(IntPtr player, float timeStep);
 
     public string resourceName;
@@ -97,17 +71,20 @@ public class VideoPlayer : MonoBehaviour
         };
 
         VPOpen(player, dataCallback, textureCallback);
+
+        StartCoroutine("DecodeCoroutine");
     }
 
     void OnDisable()
     {
+        StopCoroutine("DecodeCoroutine");
+
         VPDestroy(player);
         player = IntPtr.Zero;
     }
 
     void Update()
     {
-        VPUpdate(player, Time.deltaTime);
         var renderer = GetComponent<Renderer>();
         renderer.sharedMaterial.SetTexture("_MainYTex", textures[0]);
         renderer.sharedMaterial.SetTextureScale("_MainYTex", new Vector2(1, -1));
@@ -115,6 +92,18 @@ public class VideoPlayer : MonoBehaviour
         renderer.sharedMaterial.SetTextureScale("_MainCbTex", new Vector2(1, -1));
         renderer.sharedMaterial.SetTexture("_MainCrTex", textures[2]);
         renderer.sharedMaterial.SetTextureScale("_MainCrTex", new Vector2(1, -1));
+    }
+
+    private IEnumerator DecodeCoroutine()
+    {
+        // Wait until all frame rendering is done
+        while (true)
+        {
+            //Start a frame decoding
+            yield return new WaitForEndOfFrame();
+            VPUpdate(player, Time.deltaTime);
+            GL.InvalidateState();
+        }
     }
 
     void OnGUI()

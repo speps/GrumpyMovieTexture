@@ -10,6 +10,8 @@
 *.pam
 *.vspscc
 *.trace
+*.sln
+*.csproj
 Thumbs.db
 Work/
 Build/

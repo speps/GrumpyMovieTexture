@@ -12,7 +12,7 @@ public:
     virtual ~RenderAPI() {}
 
     virtual void ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces) = 0;
-    virtual void UpdateTexture(void* handle, int width, int height, int rowPitch, uint8_t* data) { assert(false); }
+    virtual void UpdateTexture(void* handle, int width, int height, uint8_t* data) { assert(false); }
 };
 
 RenderAPI* CreateRenderAPI(UnityGfxRenderer apiType);
