@@ -9,6 +9,8 @@ public class VideoPlayer : MonoBehaviour
     public delegate bool DataCallback(IntPtr data, int bytesMax, out int bytesRead);
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     public delegate IntPtr CreateTextureCallback(int index, int width, int height);
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    public delegate void UploadTextureCallback(int index, IntPtr data, int size);
 
 #if UNITY_IPHONE && !UNITY_EDITOR
     public const string DLLName = "__Internal";
@@ -35,7 +37,7 @@ public class VideoPlayer : MonoBehaviour
     private static extern bool VPIsStopped(IntPtr player);
 
     [DllImport(DLLName)]
-    private static extern bool VPOpen(IntPtr player, DataCallback dataCallback, CreateTextureCallback textureCallback);
+    private static extern bool VPOpen(IntPtr player, DataCallback dataCallback, CreateTextureCallback createTextureCallback, UploadTextureCallback uploadTextureCallback);
 
     [DllImport(DLLName)]
     private static extern void VPUpdate(IntPtr player, float timeStep);
@@ -47,7 +49,8 @@ public class VideoPlayer : MonoBehaviour
     int assetOffset;
     Texture2D[] textures = new Texture2D[3];
     DataCallback dataCallback;
-    CreateTextureCallback textureCallback;
+    CreateTextureCallback createTextureCallback;
+    UploadTextureCallback uploadTextureCallback;
 
     void OnEnable()
     {
@@ -64,27 +67,29 @@ public class VideoPlayer : MonoBehaviour
             bytesRead = bytesToRead;
             return assetOffset < asset.Length;
         };
-        textureCallback = (index, width, height) =>
+        createTextureCallback = (index, width, height) =>
         {
             textures[index] = new Texture2D(width, height, TextureFormat.Alpha8, false, true);
             return textures[index].GetNativeTexturePtr();
         };
+        uploadTextureCallback = (index, data, size) =>
+        {
+            textures[index].LoadRawTextureData(data, size);
+            textures[index].Apply();
+        };
 
-        VPOpen(player, dataCallback, textureCallback);
-
-        StartCoroutine("DecodeCoroutine");
+        VPOpen(player, dataCallback, createTextureCallback, uploadTextureCallback);
     }
 
     void OnDisable()
     {
-        StopCoroutine("DecodeCoroutine");
-
         VPDestroy(player);
         player = IntPtr.Zero;
     }
 
     void Update()
     {
+        VPUpdate(player, Time.deltaTime);
         var renderer = GetComponent<Renderer>();
         renderer.sharedMaterial.SetTexture("_MainYTex", textures[0]);
         renderer.sharedMaterial.SetTextureScale("_MainYTex", new Vector2(1, -1));
@@ -92,18 +97,6 @@ public class VideoPlayer : MonoBehaviour
         renderer.sharedMaterial.SetTextureScale("_MainCbTex", new Vector2(1, -1));
         renderer.sharedMaterial.SetTexture("_MainCrTex", textures[2]);
         renderer.sharedMaterial.SetTextureScale("_MainCrTex", new Vector2(1, -1));
-    }
-
-    private IEnumerator DecodeCoroutine()
-    {
-        // Wait until all frame rendering is done
-        while (true)
-        {
-            //Start a frame decoding
-            yield return new WaitForEndOfFrame();
-            VPUpdate(player, Time.deltaTime);
-            GL.InvalidateState();
-        }
     }
 
     void OnGUI()
@@ -120,7 +113,7 @@ public class VideoPlayer : MonoBehaviour
                 if (VPIsStopped(player))
                 {
                     assetOffset = 0;
-                    VPOpen(player, dataCallback, textureCallback);
+                    VPOpen(player, dataCallback, createTextureCallback, uploadTextureCallback);
                 }
                 VPPlay(player);
             }

@@ -1,5 +1,4 @@
 #include "VideoPlayer.h"
-#include "RenderAPI.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -8,7 +7,8 @@
 VideoPlayer::VideoPlayer()
     : _state(VideoPlayerState::Initialized), _timer(0.0), _timeLastFrame(0.0),
     _audioBufferCount(0), _audioBufferWritten(0), _audioBufferSize(0), _videoTime(0.0),
-    _dataCallback(nullptr), _processVideo(false)
+    _dataCallback(nullptr), _createTextureCallback(nullptr), _uploadTextureCallback(nullptr),
+    _processVideo(false)
 {
 }
 
@@ -21,7 +21,8 @@ void VideoPlayer::destroy()
 {
     stop();
     _dataCallback = nullptr;
-    _textureCallback = nullptr;
+    _createTextureCallback = nullptr;
+    _uploadTextureCallback = nullptr;
 }
 
 bool VideoPlayer::readStream()
@@ -303,15 +304,14 @@ void VideoPlayer::processVideo()
         for (int i = 0; i < 3; i++)
         {
             const VideoBuffer& buffer = frameToDisplay->buffer[i];
-            extern RenderAPI* s_CurrentAPI;
             if (_bufferTextures[i] == nullptr)
             {
-                _bufferTextures[i] = _textureCallback(i, buffer.stride, buffer.height);
+                _bufferTextures[i] = _createTextureCallback(i, buffer.stride, buffer.height);
             }
             if (_bufferTextures[i] != nullptr)
             {
                 LOG("Update %d(s=%d)x%d %p\n", buffer.width, buffer.stride, buffer.height, frameToDisplay->data[i].get());
-                s_CurrentAPI->UpdateTexture(_bufferTextures[i], buffer.stride, buffer.height, frameToDisplay->data[i].get());
+                _uploadTextureCallback(i, frameToDisplay->data[i].get(), buffer.bytes);
             }
         }
 
@@ -505,17 +505,18 @@ bool VideoPlayer::waitPause()
     return true;
 }
 
-bool VideoPlayer::open(VideoDataCallback dataCallback, VideoCreateTextureCallback textureCallback)
+bool VideoPlayer::open(VideoDataCallback dataCallback, VideoCreateTextureCallback createTextureCallback, VideoUploadTextureCallback uploadTextureCallback)
 {
     stop();
 
-    if (dataCallback == nullptr || textureCallback == nullptr)
+    if (dataCallback == nullptr || createTextureCallback == nullptr || uploadTextureCallback == nullptr)
     {
         return false;
     }
 
     _dataCallback = dataCallback;
-    _textureCallback = textureCallback;
+    _createTextureCallback = createTextureCallback;
+    _uploadTextureCallback = uploadTextureCallback;
 
     if (!readHeaders())
     {

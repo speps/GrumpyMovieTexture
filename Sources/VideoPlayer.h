@@ -27,6 +27,7 @@
 
 typedef bool (__stdcall *VideoDataCallback)(uint8_t* outData, uint32_t bytesMax, uint32_t* bytesRead);
 typedef void* (__stdcall *VideoCreateTextureCallback)(int index, int width, int height);
+typedef void (__stdcall *VideoUploadTextureCallback)(int index, uint8_t* data, int size);
 
 namespace VideoPlayerState
 {
@@ -46,7 +47,8 @@ class VideoPlayer
 private:
     VideoPlayerState::Value _state;
     VideoDataCallback _dataCallback;
-    VideoCreateTextureCallback _textureCallback;
+    VideoCreateTextureCallback _createTextureCallback;
+    VideoUploadTextureCallback _uploadTextureCallback;
     std::mutex _pauseMutex;
     std::condition_variable _pauseEvent;
     bool _processVideo;
@@ -158,7 +160,7 @@ public:
     VideoPlayerState::Value state() const
     { return _state; }
 
-    bool open(VideoDataCallback dataCallback, VideoCreateTextureCallback textureCallback);
+    bool open(VideoDataCallback dataCallback, VideoCreateTextureCallback createTextureCallback, VideoUploadTextureCallback uploadTextureCallback);
 
     void play();
     bool isPlaying() const

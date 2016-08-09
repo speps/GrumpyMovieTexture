@@ -1,13 +1,4 @@
 set(GMT_SOURCES
-	GLEW/glew.c
-	PlatformBase.h
-	RenderAPI.cpp
-	RenderAPI.h
-	RenderAPI_D3D11.cpp
-	RenderAPI_D3D12.cpp
-	RenderAPI_D3D9.cpp
-	RenderAPI_OpenGL2.cpp
-	RenderAPI_OpenGLCoreES.cpp
 	VideoPlayer.cpp
 	VideoPlayer.h
 	VideoPlayerInterface.cpp
