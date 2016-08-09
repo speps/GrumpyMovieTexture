@@ -5,6 +5,7 @@
 #include <memory>
 #include <mutex>
 #include <condition_variable>
+#include <thread>
 
 #include <ogg/ogg.h>
 #include <theora/theoradec.h>
