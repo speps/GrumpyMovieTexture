@@ -35,7 +35,7 @@
 		#define SUPPORT_D3D12 1
 	#endif
 #elif UNITY_WIN
-	#define SUPPORT_D3D9 1
+	#define SUPPORT_D3D9 0
 	#define SUPPORT_D3D11 1 // comment this out if you don't have D3D11 header/library files
 	#define SUPPORT_D3D12 0 //@TODO: enable by default? comment this out if you don't have D3D12 header/library files
 	#define SUPPORT_OPENGL_LEGACY 1
@@ -51,7 +51,7 @@
 #endif
 
 #if UNITY_IPHONE || UNITY_OSX
-	#define SUPPORT_METAL 1
+	#define SUPPORT_METAL 0
 #endif
 
 

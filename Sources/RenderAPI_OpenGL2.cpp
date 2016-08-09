@@ -12,48 +12,26 @@
 class RenderAPI_OpenGL2 : public RenderAPI
 {
 public:
-	RenderAPI_OpenGL2();
-	virtual ~RenderAPI_OpenGL2() { }
+    RenderAPI_OpenGL2() {}
+    virtual ~RenderAPI_OpenGL2() {}
 
-	virtual void ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces);
+    virtual void ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces) {}
 
-	virtual void* BeginModifyTexture(void* textureHandle, int textureWidth, int textureHeight, int* outRowPitch);
-	virtual void EndModifyTexture(void* textureHandle, int textureWidth, int textureHeight, int rowPitch, void* dataPtr);
+    virtual void UpdateTexture(void* handle, int width, int height, int rowPitch, uint8_t* data)
+    {
+        GLuint gltex = (GLuint)(size_t)(handle);
+        glBindTexture(GL_TEXTURE_2D, gltex);
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, rowPitch);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_LUMINANCE, GL_UNSIGNED_BYTE, data);
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
 };
 
 
 RenderAPI* CreateRenderAPI_OpenGL2()
 {
-	return new RenderAPI_OpenGL2();
-}
-
-
-RenderAPI_OpenGL2::RenderAPI_OpenGL2()
-{
-}
-
-
-void RenderAPI_OpenGL2::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces)
-{
-}
-
-
-void* RenderAPI_OpenGL2::BeginModifyTexture(void* textureHandle, int textureWidth, int textureHeight, int* outRowPitch)
-{
-	const int rowPitch = textureWidth * 4;
-	// Just allocate a system memory buffer here for simplicity
-	unsigned char* data = new unsigned char[rowPitch * textureHeight];
-	*outRowPitch = rowPitch;
-	return data;
-}
-
-void RenderAPI_OpenGL2::EndModifyTexture(void* textureHandle, int textureWidth, int textureHeight, int rowPitch, void* dataPtr)
-{
-	GLuint gltex = (GLuint)(size_t)(textureHandle);
-	// Update texture data, and free the memory buffer
-	glBindTexture(GL_TEXTURE_2D, gltex);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, textureWidth, textureHeight, GL_LUMINANCE, GL_UNSIGNED_BYTE, dataPtr);
-	delete[](unsigned char*)dataPtr;
+    return new RenderAPI_OpenGL2();
 }
 
 
