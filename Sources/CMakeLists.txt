@@ -14,7 +14,7 @@ set(GMT_SOURCES
 )
 
 if(IOS)
-	add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-std=c++11>)
+	add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-stdlib=libc++>)
 endif()
 
 add_library(GrumpyMovieTexture SHARED ${GMT_SOURCES})
