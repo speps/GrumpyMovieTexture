@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.5)
 project(GrumpyMovieTexture)
 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/_output/${POLLY_TOOLCHAIN_TAG})
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/_output/${POLLY_TOOLCHAIN_TAG})
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/_output/${POLLY_TOOLCHAIN_TAG})
+
 function(prefix_path var prefix)
    set(listvar "")
    foreach(f ${${var}})
@@ -9,7 +13,6 @@ function(prefix_path var prefix)
    set(${var} "${listvar}" PARENT_SCOPE)
 endfunction(prefix_path)
 
-set(CMAKE_INSTALL_PREFIX "${PROJECT_SOURCE_DIR}/_install/${POLLY_TOOLCHAIN_TAG}")
 add_subdirectory(Sources)
 
 if(MSVC)
