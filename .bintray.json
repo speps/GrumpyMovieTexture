@@ -2,9 +2,10 @@
     "package": {
         "name": "GrumpyMovieTexture",
         "repo": "generic",
-        "subject": "speps",
-        "public_download_numbers": false,
-        "public_stats": false
+        "subject": "speps"
+    },
+    "version": {
+        "name": "1.0"
     },
     "files":
         [
