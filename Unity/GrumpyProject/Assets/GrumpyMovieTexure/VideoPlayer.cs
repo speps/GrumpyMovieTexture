@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Runtime.InteropServices;
 using System;
+using System.IO;
 
 public class VideoPlayer : MonoBehaviour
 {
@@ -45,11 +46,12 @@ public class VideoPlayer : MonoBehaviour
     [DllImport(DLLName)]
     private static extern void VPGetFrameSize(IntPtr player, out int width, out int height, out int x, out int y);
 
-    public string resourceName;
+    public string streamingAssetsFileName;
     public RenderTexture renderTexture;
 
     IntPtr player;
-    byte[] asset;
+    FileStream asset;
+    byte[] assetBuffer;
     int assetOffset;
     Material material;
     Rect sourceRect;
@@ -64,16 +66,15 @@ public class VideoPlayer : MonoBehaviour
         var shader = Shader.Find("Hidden/GrumpyConvertRGB");
         material = new Material(shader);
 
-        asset = Resources.Load<TextAsset>(resourceName).bytes;
-        assetOffset = 0;
-
         dataCallback = (IntPtr data, int bytesMax, out int bytesRead) =>
         {
-            int bytesToRead = Math.Min(asset.Length - assetOffset, bytesMax);
-            Marshal.Copy(asset, assetOffset, data, bytesToRead);
-            assetOffset += bytesToRead;
-            bytesRead = bytesToRead;
-            return assetOffset < asset.Length;
+            if (assetBuffer == null || assetBuffer.Length < bytesMax)
+            {
+                assetBuffer = new byte[bytesMax];
+            }
+            bytesRead = asset.Read(assetBuffer, 0, bytesMax);
+            Marshal.Copy(assetBuffer, 0, data, bytesRead);
+            return bytesRead == bytesMax;
         };
         createTextureCallback = (index, width, height) =>
         {
@@ -91,13 +92,14 @@ public class VideoPlayer : MonoBehaviour
 
     void OnDisable()
     {
+        asset.Close();
         VPDestroy(player);
         player = IntPtr.Zero;
     }
 
     void OpenResource()
     {
-        assetOffset = 0;
+        asset = File.OpenRead(Path.Combine(Application.streamingAssetsPath, streamingAssetsFileName));
         VPOpen(player, dataCallback, createTextureCallback, uploadTextureCallback);
         int width, height, x, y;
         VPGetFrameSize(player, out width, out height, out x, out y);
