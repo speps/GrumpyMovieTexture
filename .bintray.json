@@ -11,5 +11,5 @@
         [
         {"includePattern": "_output/ios-nocodesign/Release/(libGrumpyMovieTexture\\.a)", "uploadPattern": "Plugins/iOS/$1"}
         ],
-    "publish": false
+    "publish": true
 }
