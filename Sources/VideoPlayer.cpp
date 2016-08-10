@@ -324,6 +324,24 @@ void VideoPlayer::processVideo()
     _processVideo = false;
 }
 
+void VideoPlayer::getFrameSize(int& width, int& height, int& x, int& y)
+{
+    if (_state == VideoPlayerState::Initialized)
+    {
+        width = 0;
+        height = 0;
+        x = 0;
+        y = 0;
+    }
+    else
+    {
+        width = _oggState.theoraInfo.pic_width;
+        height = _oggState.theoraInfo.pic_height;
+        x = _oggState.theoraInfo.pic_x;
+        y = _oggState.theoraInfo.pic_y;
+    }
+}
+
 void VideoPlayer::threadDecode(VideoPlayer* p)
 {
     bool endOfFile = false;

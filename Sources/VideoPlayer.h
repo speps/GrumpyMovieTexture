@@ -118,6 +118,10 @@ private:
         vorbis_block     vorbisBlock;
         vorbis_comment   vorbisComment;
 
+        OggState()
+        {
+            reset();
+        }
         void reset()
         {
             memset(&oggSyncState, 0, sizeof(OggState));
@@ -183,4 +187,6 @@ public:
 
     void update(float timeStep);
     void processVideo();
+
+    void getFrameSize(int& width, int& height, int& x, int& y);
 };

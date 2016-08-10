@@ -42,11 +42,17 @@ public class VideoPlayer : MonoBehaviour
     [DllImport(DLLName)]
     private static extern void VPUpdate(IntPtr player, float timeStep);
 
+    [DllImport(DLLName)]
+    private static extern void VPGetFrameSize(IntPtr player, out int width, out int height, out int x, out int y);
+
     public string resourceName;
+    public RenderTexture renderTexture;
 
     IntPtr player;
     byte[] asset;
     int assetOffset;
+    Material material;
+    Rect sourceRect;
     Texture2D[] textures = new Texture2D[3];
     DataCallback dataCallback;
     CreateTextureCallback createTextureCallback;
@@ -55,6 +61,8 @@ public class VideoPlayer : MonoBehaviour
     void OnEnable()
     {
         player = VPCreate();
+        var shader = Shader.Find("Hidden/GrumpyConvertRGB");
+        material = new Material(shader);
 
         asset = Resources.Load<TextAsset>(resourceName).bytes;
         assetOffset = 0;
@@ -78,7 +86,7 @@ public class VideoPlayer : MonoBehaviour
             textures[index].Apply();
         };
 
-        VPOpen(player, dataCallback, createTextureCallback, uploadTextureCallback);
+        OpenResource();
     }
 
     void OnDisable()
@@ -87,16 +95,31 @@ public class VideoPlayer : MonoBehaviour
         player = IntPtr.Zero;
     }
 
+    void OpenResource()
+    {
+        assetOffset = 0;
+        VPOpen(player, dataCallback, createTextureCallback, uploadTextureCallback);
+        int width, height, x, y;
+        VPGetFrameSize(player, out width, out height, out x, out y);
+        sourceRect = new Rect(x, y, width, height);
+    }
+
     void Update()
     {
         VPUpdate(player, Time.deltaTime);
-        var renderer = GetComponent<Renderer>();
-        renderer.sharedMaterial.SetTexture("_MainYTex", textures[0]);
-        renderer.sharedMaterial.SetTextureScale("_MainYTex", new Vector2(1, -1));
-        renderer.sharedMaterial.SetTexture("_MainCbTex", textures[1]);
-        renderer.sharedMaterial.SetTextureScale("_MainCbTex", new Vector2(1, -1));
-        renderer.sharedMaterial.SetTexture("_MainCrTex", textures[2]);
-        renderer.sharedMaterial.SetTextureScale("_MainCrTex", new Vector2(1, -1));
+        if (textures[0] != null)
+        {
+            RenderTexture.active = renderTexture;
+            GL.PushMatrix();
+            GL.LoadPixelMatrix(0, renderTexture.width, renderTexture.height, 0);
+            material.SetTexture("_MainCbTex", textures[1]);
+            material.SetTexture("_MainCrTex", textures[2]);
+            var sourceSize = new Vector2(textures[0].width, textures[0].height);
+            Graphics.DrawTexture(new Rect(0, 0, renderTexture.width, renderTexture.height), textures[0],
+                new Rect(sourceRect.x / sourceSize.x, sourceRect.y / sourceSize.y, sourceRect.width / sourceSize.x, sourceRect.height / sourceSize.y), 0, 0, 0, 0, material);
+            GL.PopMatrix();
+            RenderTexture.active = null;
+        }
     }
 
     void OnGUI()
@@ -112,8 +135,7 @@ public class VideoPlayer : MonoBehaviour
             {
                 if (VPIsStopped(player))
                 {
-                    assetOffset = 0;
-                    VPOpen(player, dataCallback, createTextureCallback, uploadTextureCallback);
+                    OpenResource();
                 }
                 VPPlay(player);
             }

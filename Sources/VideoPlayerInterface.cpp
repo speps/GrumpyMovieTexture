@@ -43,3 +43,8 @@ extern "C" UNITY_INTERFACE_EXPORT void VPUpdate(VideoPlayer* player, float timeS
 {
     player->update(timeStep);
 }
+
+extern "C" UNITY_INTERFACE_EXPORT void VPGetFrameSize(VideoPlayer* player, int& width, int& height, int& x, int& y)
+{
+    player->getFrameSize(width, height, x, y);
+}
