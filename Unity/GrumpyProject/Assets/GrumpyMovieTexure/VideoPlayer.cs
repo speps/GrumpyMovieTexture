@@ -124,23 +124,22 @@ public class VideoPlayer : MonoBehaviour
         }
     }
 
-    void OnGUI()
+    public void Play()
     {
-        bool isPlaying = VPIsPlaying(player);
-        if (GUILayout.Button(isPlaying ? "Stop" : "Play"))
+        if (VPIsStopped(player))
         {
-            if (isPlaying)
-            {
-                VPStop(player);
-            }
-            else
-            {
-                if (VPIsStopped(player))
-                {
-                    OpenResource();
-                }
-                VPPlay(player);
-            }
+            OpenResource();
         }
+        VPPlay(player);
+    }
+
+    public bool IsPlaying
+    {
+        get { return VPIsPlaying(player); }
+    }
+
+    public void Stop()
+    {
+        VPStop(player);
     }
 }
