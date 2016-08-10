@@ -54,8 +54,8 @@ deploy:
   api_key:
     secure: IkcYbqlqyL87MqKBJkcFI9j3aX42CKUmFxPcebrfEHr4EsQqcuHuZik9Zx8zRI6k
   subject: speps
-  repo: generic
-  package: GrumpyMovieTexture
+  repo: GrumpyMovieTexture
+  package: Plugins
   version: Latest
   publish: true
   override: true
