@@ -1,0 +1,14 @@
+{
+    "package": {
+        "name": "GrumpyMovieTexture",
+        "repo": "generic",
+        "subject": "speps",
+        "public_download_numbers": false,
+        "public_stats": false
+    },
+    "files":
+        [
+        {"includePattern": "_output/ios-nocodesign/Release/(libGrumpyMovieTexture\\.a)", "uploadPattern": "Plugins/iOS/$1"}
+        ],
+    "publish": false
+}
