@@ -28,6 +28,7 @@ addons:
 
 env:
   - TOOLCHAIN=ios-nocodesign CONFIG=Release EXTRA="--ios-multiarch"
+  - TOOLCHAIN=ios-nocodesign CONFIG=Release EXTRA="--iossim"
 
 install:
   # Info about OS
