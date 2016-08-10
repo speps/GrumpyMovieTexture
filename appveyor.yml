@@ -4,8 +4,10 @@ environment:
   matrix:
     - TOOLCHAIN: "vs-14-2015"
       CONFIG: Release
+      PLUGIN_FOLDER: x86
     - TOOLCHAIN: "vs-14-2015-win64"
       CONFIG: Release
+      PLUGIN_FOLDER: x64
 
 install:
   # Python 3
@@ -38,12 +40,9 @@ build_script:
   - cmd: python %POLLY_ROOT%\bin\build.py --toolchain "%TOOLCHAIN%" --config "%CONFIG%" --verbose
 
 after_build:
-  - cmd: md _output
   - cmd: cd _output
-  - cmd: md Plugins\x86
-  - cmd: copy vs-14-2015\Release\GrumpyMovieTexture.dll Plugins\x86
-  - cmd: md Plugins\x64
-  - cmd: copy vs-14-2015-win64\Release\GrumpyMovieTexture.dll Plugins\x64
+  - cmd: md Plugins\%PLUGIN_FOLDER%
+  - cmd: copy %TOOLCHAIN%\Release\GrumpyMovieTexture.dll Plugins\%PLUGIN_FOLDER%
   - cmd: 7z a output.zip Plugins
 
 deploy:
