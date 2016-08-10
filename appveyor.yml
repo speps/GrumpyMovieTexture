@@ -4,6 +4,8 @@ environment:
   matrix:
     - TOOLCHAIN: "vs-14-2015"
       CONFIG: Release
+    - TOOLCHAIN: "vs-14-2015-win64"
+      CONFIG: Release
 
 install:
   # Python 3
@@ -34,3 +36,26 @@ install:
 
 build_script:
   - cmd: python %POLLY_ROOT%\bin\build.py --toolchain "%TOOLCHAIN%" --config "%CONFIG%" --verbose
+
+after_build:
+  - cmd: md _output
+  - cmd: cd _output
+  - cmd: md Plugins\x86
+  - cmd: copy vs-14-2015\Release\GrumpyMovieTexture.dll Plugins\x86
+  - cmd: md Plugins\x64
+  - cmd: copy vs-14-2015-win64\Release\GrumpyMovieTexture.dll Plugins\x64
+  - cmd: 7z a output.zip Plugins
+
+deploy:
+- provider: BinTray
+  username: speps
+  api_key:
+    secure: IkcYbqlqyL87MqKBJkcFI9j3aX42CKUmFxPcebrfEHr4EsQqcuHuZik9Zx8zRI6k
+  subject: speps
+  repo: generic
+  package: GrumpyMovieTexture
+  version: Latest
+  publish: true
+  override: true
+  explode: true
+  artifact: _output\output.zip
