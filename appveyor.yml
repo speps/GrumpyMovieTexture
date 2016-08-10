@@ -45,6 +45,9 @@ after_build:
   - cmd: copy %TOOLCHAIN%\Release\GrumpyMovieTexture.dll Plugins\%PLUGIN_FOLDER%
   - cmd: 7z a output.zip Plugins
 
+artifacts:
+  - path: _output\output.zip
+
 deploy:
 - provider: BinTray
   username: speps
