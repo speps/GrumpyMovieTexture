@@ -49,15 +49,13 @@ set(GMT_SOURCES
 
 if(IOS)
 	add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-stdlib=libc++>)
-else()
-	set(GMT_LIBS ${GMT_LIBS} opengl32.lib)
-endif()
-
-if (IOS)
+	set(CMAKE_XCODE_ATTRIBUTE_ENABLE_BITCODE YES)
 	add_library(GrumpyMovieTexture STATIC ${GMT_SOURCES})
 else()
+	set(GMT_LIBS ${GMT_LIBS} opengl32.lib)
 	add_library(GrumpyMovieTexture SHARED ${GMT_SOURCES})
 endif()
+
 target_include_directories(GrumpyMovieTexture PRIVATE
 	${PROJECT_SOURCE_DIR}/External/${LIBOGG_VERSION}/include
 	${PROJECT_SOURCE_DIR}/External/${LIBTHEORA_VERSION}/include
