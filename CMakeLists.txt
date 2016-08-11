@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
-if(NOT IOS)
-  set(CMAKE_OSX_ARCHITECTURES "i386;x86_64" CACHE STRING "Build architectures for Mac OS X" FORCE)
+if(DEFINED $ENV{ARCHS})
+  set(CMAKE_OSX_ARCHITECTURES "$ENV{ARCHS}" CACHE STRING "Build architectures for Mac OS X" FORCE)
 endif()
 set(CMAKE_XCODE_ATTRIBUTE_ENABLE_BITCODE YES)
 project(GrumpyMovieTexture)
