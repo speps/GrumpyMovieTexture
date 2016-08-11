@@ -4,8 +4,8 @@
 #include <string.h>
 #include <assert.h>
 
-VideoPlayer::VideoPlayer()
-    : _state(VideoPlayerState::Initialized), _timer(0.0), _timeLastFrame(0.0),
+VideoPlayer::VideoPlayer(void* userData)
+    : _userData(userData), _state(VideoPlayerState::Initialized), _timer(0.0), _timeLastFrame(0.0),
     _audioBufferCount(0), _audioBufferWritten(0), _audioBufferSize(0), _videoTime(0.0),
     _dataCallback(nullptr), _createTextureCallback(nullptr), _uploadTextureCallback(nullptr),
     _processVideo(false)
@@ -29,7 +29,7 @@ bool VideoPlayer::readStream()
 {
     uint8_t* buffer = (uint8_t*)ogg_sync_buffer(&_oggState.oggSyncState, VIDEO_PLAYER_OGG_BUFFER_SIZE);
     uint32_t bytesRead = 0;
-    bool success = _dataCallback(buffer, VIDEO_PLAYER_OGG_BUFFER_SIZE, &bytesRead);
+    bool success = _dataCallback(_userData, buffer, VIDEO_PLAYER_OGG_BUFFER_SIZE, &bytesRead);
     ogg_sync_wrote(&_oggState.oggSyncState, bytesRead);
     return success;
 }
@@ -273,12 +273,12 @@ void VideoPlayer::processVideo()
             const VideoBuffer& buffer = frameToDisplay->buffer[i];
             if (_bufferTextures[i] == nullptr)
             {
-                _bufferTextures[i] = _createTextureCallback(i, buffer.stride, buffer.height);
+                _bufferTextures[i] = _createTextureCallback(_userData, i, buffer.stride, buffer.height);
             }
             if (_bufferTextures[i] != nullptr)
             {
                 LOG("Update %d(s=%d)x%d %p\n", buffer.width, buffer.stride, buffer.height, frameToDisplay->data[i].get());
-                _uploadTextureCallback(i, frameToDisplay->data[i].get(), buffer.bytes);
+                _uploadTextureCallback(_userData, i, frameToDisplay->data[i].get(), buffer.bytes);
             }
         }
 

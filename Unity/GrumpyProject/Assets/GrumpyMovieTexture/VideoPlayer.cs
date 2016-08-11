@@ -6,9 +6,15 @@ using System.IO;
 
 public class VideoPlayer : MonoBehaviour
 {
-    public delegate bool DataCallback(IntPtr data, int bytesMax, out int bytesRead);
-    public delegate IntPtr CreateTextureCallback(int index, int width, int height);
-    public delegate void UploadTextureCallback(int index, IntPtr data, int size);
+    public class MonoPInvokeCallbackAttribute : System.Attribute
+    {
+        private Type type;
+        public MonoPInvokeCallbackAttribute(Type t) { type = t; }
+    }
+
+    public delegate bool DataCallback(IntPtr userData, IntPtr data, int bytesMax, out int bytesRead);
+    public delegate IntPtr CreateTextureCallback(IntPtr userData, int index, int width, int height);
+    public delegate void UploadTextureCallback(IntPtr userData, int index, IntPtr data, int size);
 
 #if UNITY_IPHONE && !UNITY_EDITOR
     public const string DLLName = "__Internal";
@@ -17,7 +23,7 @@ public class VideoPlayer : MonoBehaviour
 #endif
 
     [DllImport(DLLName)]
-    private static extern IntPtr VPCreate();
+    private static extern IntPtr VPCreate(IntPtr userData);
 
     [DllImport(DLLName)]
     private static extern void VPDestroy(IntPtr player);
@@ -46,42 +52,20 @@ public class VideoPlayer : MonoBehaviour
     public string streamingAssetsFileName;
     public RenderTexture renderTexture;
 
+    GCHandle handle;
     IntPtr player;
     FileStream asset;
     byte[] assetBuffer;
     Material material;
     Rect sourceRect;
     Texture2D[] textures = new Texture2D[3];
-    DataCallback dataCallback;
-    CreateTextureCallback createTextureCallback;
-    UploadTextureCallback uploadTextureCallback;
 
     void OnEnable()
     {
-        player = VPCreate();
+        handle = GCHandle.Alloc(this);
+        player = VPCreate(GCHandle.ToIntPtr(handle));
         var shader = Shader.Find("Hidden/GrumpyConvertRGB");
         material = new Material(shader);
-
-        dataCallback = (IntPtr data, int bytesMax, out int bytesRead) =>
-        {
-            if (assetBuffer == null || assetBuffer.Length < bytesMax)
-            {
-                assetBuffer = new byte[bytesMax];
-            }
-            bytesRead = asset.Read(assetBuffer, 0, bytesMax);
-            Marshal.Copy(assetBuffer, 0, data, bytesRead);
-            return bytesRead == bytesMax;
-        };
-        createTextureCallback = (index, width, height) =>
-        {
-            textures[index] = new Texture2D(width, height, TextureFormat.Alpha8, false, true);
-            return textures[index].GetNativeTexturePtr();
-        };
-        uploadTextureCallback = (index, data, size) =>
-        {
-            textures[index].LoadRawTextureData(data, size);
-            textures[index].Apply();
-        };
 
         OpenResource();
     }
@@ -91,15 +75,48 @@ public class VideoPlayer : MonoBehaviour
         asset.Close();
         VPDestroy(player);
         player = IntPtr.Zero;
+        handle.Free();
     }
 
     void OpenResource()
     {
         asset = File.OpenRead(Path.Combine(Application.streamingAssetsPath, streamingAssetsFileName));
-        VPOpen(player, dataCallback, createTextureCallback, uploadTextureCallback);
+        VPOpen(player, OnDataCallback, OnCreateTextureCallback, OnUploadTextureCallback);
         int width, height, x, y;
         VPGetFrameSize(player, out width, out height, out x, out y);
         sourceRect = new Rect(x, y, width, height);
+    }
+
+    [MonoPInvokeCallback(typeof(DataCallback))]
+    static bool OnDataCallback(IntPtr userData, IntPtr data, int bytesMax, out int bytesRead)
+    {
+        GCHandle handle = GCHandle.FromIntPtr(userData);
+        VideoPlayer player = (VideoPlayer)handle.Target;
+        if (player.assetBuffer == null || player.assetBuffer.Length<bytesMax)
+        {
+            player.assetBuffer = new byte[bytesMax];
+        }
+        bytesRead = player.asset.Read(player.assetBuffer, 0, bytesMax);
+        Marshal.Copy(player.assetBuffer, 0, data, bytesRead);
+        return bytesRead == bytesMax;
+    }
+
+    [MonoPInvokeCallback(typeof(CreateTextureCallback))]
+    static IntPtr OnCreateTextureCallback(IntPtr userData, int index, int width, int height)
+    {
+        GCHandle handle = GCHandle.FromIntPtr(userData);
+        VideoPlayer player = (VideoPlayer)handle.Target;
+        player.textures[index] = new Texture2D(width, height, TextureFormat.Alpha8, false, true);
+        return player.textures[index].GetNativeTexturePtr();
+    }
+
+    [MonoPInvokeCallback(typeof(UploadTextureCallback))]
+    static void OnUploadTextureCallback(IntPtr userData, int index, IntPtr data, int size)
+    {
+        GCHandle handle = GCHandle.FromIntPtr(userData);
+        VideoPlayer player = (VideoPlayer)handle.Target;
+        player.textures[index].LoadRawTextureData(data, size);
+        player.textures[index].Apply();
     }
 
     void Update()

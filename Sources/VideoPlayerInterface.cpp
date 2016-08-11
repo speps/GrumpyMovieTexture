@@ -4,9 +4,9 @@
 
 #define UNITY_INTERFACE_EXPORT __declspec(dllexport)
 
-extern "C" UNITY_INTERFACE_EXPORT void* VPCreate()
+extern "C" UNITY_INTERFACE_EXPORT void* VPCreate(void* userData)
 {
-    return new VideoPlayer();
+    return new VideoPlayer(userData);
 }
 
 extern "C" UNITY_INTERFACE_EXPORT void VPDestroy(VideoPlayer* player)

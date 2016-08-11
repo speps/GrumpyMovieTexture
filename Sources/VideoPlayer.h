@@ -25,9 +25,9 @@
 #define LOG(...)
 #endif
 
-typedef bool (*VideoDataCallback)(uint8_t* outData, uint32_t bytesMax, uint32_t* bytesRead);
-typedef void* (*VideoCreateTextureCallback)(int index, int width, int height);
-typedef void (*VideoUploadTextureCallback)(int index, uint8_t* data, int size);
+typedef bool (*VideoDataCallback)(void* userData, uint8_t* outData, uint32_t bytesMax, uint32_t* bytesRead);
+typedef void* (*VideoCreateTextureCallback)(void* userData, int index, int width, int height);
+typedef void (*VideoUploadTextureCallback)(void* userData, int index, uint8_t* data, int size);
 
 namespace VideoPlayerState
 {
@@ -45,6 +45,7 @@ namespace VideoPlayerState
 class VideoPlayer
 {
 private:
+    void* _userData;
     VideoPlayerState::Value _state;
     VideoDataCallback _dataCallback;
     VideoCreateTextureCallback _createTextureCallback;
@@ -155,7 +156,7 @@ private:
     void cancelPause();
     bool waitPause();
 public:
-    VideoPlayer();
+    VideoPlayer(void* userData);
     virtual ~VideoPlayer();
 
     VideoPlayerState::Value state() const
