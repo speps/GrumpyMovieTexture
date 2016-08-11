@@ -9,7 +9,7 @@
     },
     "files":
         [
-        {"includePattern": "_output/ios-nocodesign/Release/(libGrumpyMovieTexture\\.a)", "uploadPattern": "Plugins/iOS/$1", "matrixParams": { "override": 1 } }
+        {"includePattern": "_output/osx-10-9/Release/(GrumpyMovieTexture\\.bundle/Contents/MacOS/GrumpyMovieTexture)", "uploadPattern": "Plugins/$1", "matrixParams": { "override": 1 } }
         ],
     "publish": true
 }
