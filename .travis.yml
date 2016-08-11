@@ -30,7 +30,7 @@ addons:
 
 env:
   - TOOLCHAIN=osx-10-11 CONFIG=Release ARTIFACT=.bintray.osx.json ARCHS="i386;x86_64"
-  - TOOLCHAIN=ios-nocodesign-9-2 CONFIG=Release EXTRA="--ios-multiarch" ARTIFACT=.bintray.ios.json ENABLE_BITCODE=YES
+  - TOOLCHAIN=ios-nocodesign-9-2 CONFIG=Release EXTRA="--ios-multiarch" ARTIFACT=.bintray.ios.json XCODE_XCCONFIG_FILE=.ios.xcconfig
 
 install:
   # Info about OS
@@ -50,7 +50,6 @@ install:
   - POLLY_ROOT="`pwd`/polly-master"
 
   - export PATH="${POLLY_ROOT}/bin:${PATH}"
-  - export XCODE_XCCONFIG_FILE="${POLLY_ROOT}/scripts/NoCodeSign.xcconfig"
 
   # Install dependencies (CMake, Android NDK)
   - install-ci-dependencies.py
