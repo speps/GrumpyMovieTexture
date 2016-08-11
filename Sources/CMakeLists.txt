@@ -52,7 +52,6 @@ if(IOS)
 	set(CMAKE_XCODE_ATTRIBUTE_ENABLE_BITCODE YES)
 	add_library(GrumpyMovieTexture STATIC ${GMT_SOURCES})
 else()
-	set(GMT_LIBS ${GMT_LIBS} opengl32.lib)
 	add_library(GrumpyMovieTexture SHARED ${GMT_SOURCES})
 endif()
 
