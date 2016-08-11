@@ -1,4 +1,7 @@
 cmake_minimum_required(VERSION 3.5)
+if(NOT CMAKE_OSX_ARCHITECTURES)
+  set(CMAKE_OSX_ARCHITECTURES "i386;x86_64" CACHE STRING "Build architectures for Mac OS X" FORCE)
+endif()
 project(GrumpyMovieTexture)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/_output/${POLLY_TOOLCHAIN_TAG})
