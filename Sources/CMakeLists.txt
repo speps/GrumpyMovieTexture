@@ -47,14 +47,13 @@ set(GMT_SOURCES
 	${LIBVORBIS_SOURCES}
 )
 
-if(APPLE)
-	set(CMAKE_MACOSX_BUNDLE TRUE)
-endif()
-
 if(IOS)
 	add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-stdlib=libc++>)
 	set(CMAKE_XCODE_ATTRIBUTE_ENABLE_BITCODE YES)
 	add_library(GrumpyMovieTexture STATIC ${GMT_SOURCES})
+elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+	add_library(GrumpyMovieTexture MODULE ${GMT_SOURCES})
+	set_target_properties(GrumpyMovieTexture PROPERTIES BUNDLE 1)
 else()
 	add_library(GrumpyMovieTexture SHARED ${GMT_SOURCES})
 endif()
