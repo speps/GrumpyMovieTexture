@@ -51,7 +51,7 @@ install:
 
   - export PATH="${POLLY_ROOT}/bin:${PATH}"
   # Workaround because Polly doesn't use the env var if toolchain specifies "nocodesign"
-  - if [[ "${ENABLE_BITCODE}" == "YES" ]]; echo -e "\nENABLE_BITCODE = YES" >> ${POLLY_ROOT}/scripts/NoCodeSign.xcconfig
+  - if [[ "${ENABLE_BITCODE}" == "YES" ]]; then echo -e "\nENABLE_BITCODE = YES" >> ${POLLY_ROOT}/scripts/NoCodeSign.xcconfig; fi
 
   # Install dependencies (CMake, Android NDK)
   - install-ci-dependencies.py
