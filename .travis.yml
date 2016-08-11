@@ -6,6 +6,8 @@ language:
 os:
   - osx
 
+osx_image: xcode7.3
+
 # Install packages differs for container-based infrastructure
 # * https://docs.travis-ci.com/user/migrating-from-legacy/#How-do-I-install-APT-sources-and-packages%3F
 # * http://stackoverflow.com/a/30925448/2288008
@@ -27,7 +29,7 @@ addons:
       - g++-4.8
 
 env:
-  - TOOLCHAIN=osx-10-7 CONFIG=Release
+  - TOOLCHAIN=osx-10-11 CONFIG=Release
   - TOOLCHAIN=ios-nocodesign CONFIG=Release EXTRA="--ios-multiarch"
 
 install:
