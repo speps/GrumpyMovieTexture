@@ -6,11 +6,8 @@ using System.IO;
 
 public class VideoPlayer : MonoBehaviour
 {
-    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     public delegate bool DataCallback(IntPtr data, int bytesMax, out int bytesRead);
-    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     public delegate IntPtr CreateTextureCallback(int index, int width, int height);
-    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     public delegate void UploadTextureCallback(int index, IntPtr data, int size);
 
 #if UNITY_IPHONE && !UNITY_EDITOR
@@ -52,7 +49,6 @@ public class VideoPlayer : MonoBehaviour
     IntPtr player;
     FileStream asset;
     byte[] assetBuffer;
-    int assetOffset;
     Material material;
     Rect sourceRect;
     Texture2D[] textures = new Texture2D[3];

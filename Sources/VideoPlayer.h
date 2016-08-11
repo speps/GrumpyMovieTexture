@@ -25,9 +25,9 @@
 #define LOG(...)
 #endif
 
-typedef bool (__stdcall *VideoDataCallback)(uint8_t* outData, uint32_t bytesMax, uint32_t* bytesRead);
-typedef void* (__stdcall *VideoCreateTextureCallback)(int index, int width, int height);
-typedef void (__stdcall *VideoUploadTextureCallback)(int index, uint8_t* data, int size);
+typedef bool (*VideoDataCallback)(uint8_t* outData, uint32_t bytesMax, uint32_t* bytesRead);
+typedef void* (*VideoCreateTextureCallback)(int index, int width, int height);
+typedef void (*VideoUploadTextureCallback)(int index, uint8_t* data, int size);
 
 namespace VideoPlayerState
 {
@@ -82,15 +82,12 @@ private:
     struct AudioFrame
     {
         std::unique_ptr<float[]> samplesL, samplesR;
-        int bytesRead;
+        int samplesRead;
 
         AudioFrame()
-            :samplesL(nullptr), samplesR(nullptr), bytesRead(0)
+            :samplesL(nullptr), samplesR(nullptr), samplesRead(0)
         {
-
         }
-
-        AudioFrame *pNext, *pPrev;
     };
     typedef std::list<std::unique_ptr<AudioFrame>> AudioFrames;
     AudioFrames _audioFrames;
@@ -189,4 +186,5 @@ public:
     void processVideo();
 
     void getFrameSize(int& width, int& height, int& x, int& y);
+    void pcmRead(float* data, int numSamples);
 };

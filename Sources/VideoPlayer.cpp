@@ -166,39 +166,6 @@ bool VideoPlayer::readHeaders()
     return _oggState.hasTheora || _oggState.hasVorbis;
 }
 
-//FMOD_RESULT F_CALLBACK VideoPlayer::pcmReadCallback(FMOD_SOUND *sound, void *data, unsigned int datalen)
-//{
-//    void *userData = NULL;
-//    FMOD_Sound_GetUserData(sound, &userData);
-//    VideoPlayer *p = static_cast<VideoPlayer*>(userData);
-//
-//    p->_audioMutex.waitLock();
-//    if (p->_audioFrames.empty())
-//    {
-//        p->_audioMutex.release();
-//        return FMOD_ERR_NOTREADY;
-//    }
-//    
-//    signed short *output = (signed short*)data;
-//
-//    AudioFrame *frame = p->_audioFrames.head();
-//    float *inputL = (float*)(((char*)frame->samplesL) + frame->bytesRead);
-//    float *inputR = (float*)(((char*)frame->samplesR) + frame->bytesRead);
-//    for(unsigned int i = 0; i < datalen >> sizeof(short); i++)
-//    {
-//        output[i * 2 + 0] = (signed short)(clamp(inputL[i], -1.0f, 1.0f) * 32767.0f);
-//        output[i * 2 + 1] = (signed short)(clamp(inputR[i], -1.0f, 1.0f) * 32767.0f);
-//    }
-//    frame->bytesRead += datalen;
-//    if (frame->bytesRead == p->_audioBufferSize)
-//    {
-//        p->_audioFrames.remove(frame);
-//    }
-//    p->_audioMutex.release();
-//
-//    return FMOD_OK;
-//}
-
 void VideoPlayer::initAudio()
 {
 }
@@ -209,7 +176,7 @@ void VideoPlayer::shutAudio()
 
 void VideoPlayer::pushAudioFrame()
 {
-    assert(_audioBufferCount == 0 && _audioBufferWritten == _audioBufferSize);
+    assert(_audioBufferCount == 0 && _audioBufferWritten == _audioBufferSize * sizeof(float));
 
     std::unique_ptr<AudioFrame> frame(new AudioFrame());
     frame->samplesL.reset(new float[_audioBufferSize]);
@@ -342,6 +309,30 @@ void VideoPlayer::getFrameSize(int& width, int& height, int& x, int& y)
     }
 }
 
+void VideoPlayer::pcmRead(float* data, int numSamples)
+{
+    std::unique_lock<std::mutex> lock(_audioMutex);
+    if (_audioFrames.empty())
+    {
+        memset(data, 0, sizeof(float) * numSamples);
+        return;
+    }
+
+    AudioFrame *frame = _audioFrames.front().get();
+    float *inputL = &frame->samplesL.get()[frame->samplesRead];
+    float *inputR = &frame->samplesR.get()[frame->samplesRead];
+    for(unsigned int i = 0; i < numSamples; i++)
+    {
+        data[i * 2 + 0] = inputL[i];
+        data[i * 2 + 1] = inputR[i];
+    }
+    frame->samplesRead += numSamples;
+    if (frame->samplesRead >= _audioBufferSize)
+    {
+        _audioFrames.pop_front();
+    }
+}
+
 void VideoPlayer::threadDecode(VideoPlayer* p)
 {
     bool endOfFile = false;
@@ -357,7 +348,7 @@ void VideoPlayer::threadDecode(VideoPlayer* p)
     p->_processVideo = false;
     p->_audioBufferCount = VIDEO_PLAYER_AUDIO_BUFFER_SIZE;
     p->_audioBufferWritten = 0;
-    p->_audioBufferSize = sizeof(float) * VIDEO_PLAYER_AUDIO_BUFFER_SIZE; // Number of bytes per channel
+    p->_audioBufferSize = VIDEO_PLAYER_AUDIO_BUFFER_SIZE; // Number of bytes per channel
     p->_audioBufferL.reset(new float[p->_audioBufferSize]);
     p->_audioBufferR.reset(new float[p->_audioBufferSize]);
 

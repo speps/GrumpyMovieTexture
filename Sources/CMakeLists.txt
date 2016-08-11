@@ -47,6 +47,10 @@ set(GMT_SOURCES
 	${LIBVORBIS_SOURCES}
 )
 
+if(APPLE)
+	set(CMAKE_MACOSX_BUNDLE TRUE)
+endif()
+
 if(IOS)
 	add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-stdlib=libc++>)
 	set(CMAKE_XCODE_ATTRIBUTE_ENABLE_BITCODE YES)
