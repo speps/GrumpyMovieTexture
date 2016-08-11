@@ -27,6 +27,7 @@ addons:
       - g++-4.8
 
 env:
+  - TOOLCHAIN=osx-10-7 CONFIG=Release
   - TOOLCHAIN=ios-nocodesign CONFIG=Release EXTRA="--ios-multiarch"
 
 install:
