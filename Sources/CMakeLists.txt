@@ -49,7 +49,6 @@ set(GMT_SOURCES
 
 if(IOS)
 	add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-stdlib=libc++>)
-	set(CMAKE_XCODE_ATTRIBUTE_ENABLE_BITCODE YES)
 	add_library(GrumpyMovieTexture STATIC ${GMT_SOURCES})
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 	add_library(GrumpyMovieTexture MODULE ${GMT_SOURCES})
