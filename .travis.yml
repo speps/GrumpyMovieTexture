@@ -3,10 +3,13 @@ os:
 
 osx_image: xcode7.2
 
-install:
+before_install:
   - wget https://github.com/sttz/install-unity/raw/master/install-unity.py
   - (echo -e "#!/usr/bin/env python\n"; cat install-unity.py) > install-unity-fixed.py
   - chmod +x install-unity-fixed.py
 
+install:
+  - install-unity-fixed.py 5.3
+
 script:
-  - install-unity-fixed.py --list 5
+  - install-unity-fixed.py --help
