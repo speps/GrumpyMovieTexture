@@ -5,7 +5,8 @@ osx_image: xcode7.2
 
 install:
   - wget https://github.com/sttz/install-unity/raw/master/install-unity.py
-  - chmod +x install-unity.py
+  - (echo -e "#!/usr/bin/env python\n"; cat install-unity.py) > install-unity-fixed.py
+  - chmod +x install-unity-fixed.py
 
 script:
-  - install-unity.py --list 5
+  - install-unity-fixed.py --list 5
