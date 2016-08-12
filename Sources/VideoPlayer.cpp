@@ -224,6 +224,12 @@ void VideoPlayer::shutVideo()
 
 void VideoPlayer::pushVideoFrame()
 {
+    // Skip frames that won't be shown anyway
+    if (_videoTime < _timer || _videoTime < _timeLastFrame)
+    {
+        return;
+    }
+
     // Consume frame in any case
     th_ycbcr_buffer yuv;
     th_decode_ycbcr_out(_oggState.theoraDecoder, yuv);
