@@ -9,7 +9,7 @@ before_install:
   - chmod +x install-unity-fixed.py
 
 install:
-  - install-unity-fixed.py 5.3
+  - ./install-unity-fixed.py 5.3
 
 script:
-  - install-unity-fixed.py --help
+  - ./install-unity-fixed.py --help
