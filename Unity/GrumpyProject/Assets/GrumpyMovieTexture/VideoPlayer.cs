@@ -44,7 +44,7 @@ public class VideoPlayer : MonoBehaviour
     private static extern bool VPOpenCallback(IntPtr player, DataCallback dataCallback, CreateTextureCallback createTextureCallback, UploadTextureCallback uploadTextureCallback);
 
     [DllImport(DLLName)]
-    private static extern bool VPOpenFile(IntPtr player, [MarshalAs(UnmanagedType.LPStr)] string filePath, CreateTextureCallback createTextureCallback, UploadTextureCallback uploadTextureCallback);
+    private static extern bool VPOpenFile(IntPtr player, string filePath, CreateTextureCallback createTextureCallback, UploadTextureCallback uploadTextureCallback);
 
     [DllImport(DLLName)]
     private static extern void VPUpdate(IntPtr player, float timeStep);
