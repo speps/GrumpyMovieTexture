@@ -4,6 +4,8 @@
 
 #if WIN32
 #define UNITY_INTERFACE_EXPORT __declspec(dllexport)
+#else
+#define UNITY_INTERFACE_EXPORT
 #endif
 
 extern "C" UNITY_INTERFACE_EXPORT void* VPCreate(void* userData)
