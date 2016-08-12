@@ -41,7 +41,10 @@ public class VideoPlayer : MonoBehaviour
     private static extern bool VPIsStopped(IntPtr player);
 
     [DllImport(DLLName)]
-    private static extern bool VPOpen(IntPtr player, DataCallback dataCallback, CreateTextureCallback createTextureCallback, UploadTextureCallback uploadTextureCallback);
+    private static extern bool VPOpenCallback(IntPtr player, DataCallback dataCallback, CreateTextureCallback createTextureCallback, UploadTextureCallback uploadTextureCallback);
+
+    [DllImport(DLLName)]
+    private static extern bool VPOpenFile(IntPtr player, [MarshalAs(UnmanagedType.LPStr)] string filePath, CreateTextureCallback createTextureCallback, UploadTextureCallback uploadTextureCallback);
 
     [DllImport(DLLName)]
     private static extern void VPUpdate(IntPtr player, float timeStep);
@@ -49,16 +52,21 @@ public class VideoPlayer : MonoBehaviour
     [DllImport(DLLName)]
     private static extern void VPGetFrameSize(IntPtr player, out int width, out int height, out int x, out int y);
 
+    [DllImport(DLLName)]
+    private static extern void VPGetAudioInfo(IntPtr player, out int numSamples, out int channels, out int frequency);
+    
+    [DllImport(DLLName)]
+    private static extern void VPPCMRead(IntPtr player, IntPtr data, int numSamples);
+    
     public string streamingAssetsFileName;
     public RenderTexture renderTexture;
 
     GCHandle handle;
     IntPtr player;
-    FileStream asset;
-    byte[] assetBuffer;
     Material material;
     Rect sourceRect;
     Texture2D[] textures = new Texture2D[3];
+    AudioClip audioClip;
 
     void OnEnable()
     {
@@ -80,25 +88,22 @@ public class VideoPlayer : MonoBehaviour
 
     void OpenResource()
     {
-        asset = File.OpenRead(Path.Combine(Application.streamingAssetsPath, streamingAssetsFileName));
-        VPOpen(player, OnDataCallback, OnCreateTextureCallback, OnUploadTextureCallback);
+        var filePath = Path.Combine(Application.streamingAssetsPath, streamingAssetsFileName);
+        VPOpenFile(player, filePath, OnCreateTextureCallback, OnUploadTextureCallback);
         int width, height, x, y;
         VPGetFrameSize(player, out width, out height, out x, out y);
         sourceRect = new Rect(x, y, width, height);
-    }
-
-    [MonoPInvokeCallback(typeof(DataCallback))]
-    static bool OnDataCallback(IntPtr userData, IntPtr data, int bytesMax, out int bytesRead)
-    {
-        GCHandle handle = GCHandle.FromIntPtr(userData);
-        VideoPlayer player = (VideoPlayer)handle.Target;
-        if (player.assetBuffer == null || player.assetBuffer.Length<bytesMax)
+        int numSamples, channels, frequency;
+        VPGetAudioInfo(player, out numSamples, out channels, out frequency);
+        if (numSamples > 0)
         {
-            player.assetBuffer = new byte[bytesMax];
+            //audioClip = AudioClip.Create(streamingAssetsFileName, numSamples, 2, frequency, true, OnPCMReadCallback, OnPCMSetPositionCallback);
+            //var audioSource = GetComponent<AudioSource>();
+            //if (audioSource != null)
+            //{
+            //    audioSource.clip = audioClip;
+            //}
         }
-        bytesRead = player.asset.Read(player.assetBuffer, 0, bytesMax);
-        Marshal.Copy(player.assetBuffer, 0, data, bytesRead);
-        return bytesRead == bytesMax;
     }
 
     [MonoPInvokeCallback(typeof(CreateTextureCallback))]
@@ -117,6 +122,19 @@ public class VideoPlayer : MonoBehaviour
         VideoPlayer player = (VideoPlayer)handle.Target;
         player.textures[index].LoadRawTextureData(data, size);
         player.textures[index].Apply();
+    }
+
+    void OnPCMReadCallback(float[] data)
+    {
+        if (audioClip != null)
+        {
+            var handle = GCHandle.Alloc(data, GCHandleType.Pinned);
+            VPPCMRead(player, handle.AddrOfPinnedObject(), data.Length / 2);
+            handle.Free();
+        }
+    }
+    void OnPCMSetPositionCallback(int newPosition)
+    {
     }
 
     void Update()
@@ -143,6 +161,11 @@ public class VideoPlayer : MonoBehaviour
         {
             OpenResource();
         }
+        var audioSource = GetComponent<AudioSource>();
+        if (audioSource != null)
+        {
+            audioSource.Play();
+        }
         VPPlay(player);
     }
 
@@ -154,5 +177,10 @@ public class VideoPlayer : MonoBehaviour
     public void Stop()
     {
         VPStop(player);
+        var audioSource = GetComponent<AudioSource>();
+        if (audioSource != null)
+        {
+            audioSource.Stop();
+        }
     }
 }

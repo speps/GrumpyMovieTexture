@@ -1,6 +1,8 @@
 #pragma once
 
+#include <stdio.h>
 #include <stdlib.h>
+#include <atomic>
 #include <list>
 #include <memory>
 #include <mutex>
@@ -11,10 +13,8 @@
 #include <theora/theoradec.h>
 #include <vorbis/codec.h>
 
-#define VIDEO_PLAYER_NUM_BUFFERS 2
 #define VIDEO_PLAYER_OGG_BUFFER_SIZE 4096
-#define VIDEO_PLAYER_AUDIO_BUFFER_SIZE 4096
-#define VIDEO_PLAYER_AUDIO_BUFFERED_FRAMES 3
+#define VIDEO_PLAYER_AUDIO_BUFFER_SIZE 16384
 #define VIDEO_PLAYER_VIDEO_BUFFERED_FRAMES 3
 #define MALLOC malloc
 #define FREE free
@@ -29,30 +29,28 @@ typedef bool (*VideoDataCallback)(void* userData, uint8_t* outData, uint32_t byt
 typedef void* (*VideoCreateTextureCallback)(void* userData, int index, int width, int height);
 typedef void (*VideoUploadTextureCallback)(void* userData, int index, uint8_t* data, int size);
 
-namespace VideoPlayerState
+enum class VideoPlayerState
 {
-    enum Value
-    {
-        None,
-        Initialized,
-        Ready,
-        Playing,
-        Paused,
-        Stopped
-    };
-}
+    None,
+    Initialized,
+    Ready,
+    Playing,
+    Paused,
+    Stopped
+};
 
 class VideoPlayer
 {
 private:
     void* _userData;
-    VideoPlayerState::Value _state;
+    VideoPlayerState _state;
+    FILE* _fileStream;
     VideoDataCallback _dataCallback;
     VideoCreateTextureCallback _createTextureCallback;
     VideoUploadTextureCallback _uploadTextureCallback;
     std::mutex _pauseMutex;
     std::condition_variable _pauseEvent;
-    bool _processVideo;
+    std::atomic<bool> _processVideo;
 
     double _timer, _timeLastFrame;
     void* _bufferTextures[3];
@@ -83,10 +81,10 @@ private:
     struct AudioFrame
     {
         std::unique_ptr<float[]> samplesL, samplesR;
-        int samplesRead;
+        int numSamples, samplesRead;
 
         AudioFrame()
-            :samplesL(nullptr), samplesR(nullptr), samplesRead(0)
+            :samplesL(nullptr), samplesR(nullptr), numSamples(0), samplesRead(0)
         {
         }
     };
@@ -94,8 +92,7 @@ private:
     AudioFrames _audioFrames;
 
     std::mutex _audioMutex;
-    int _audioBufferCount, _audioBufferWritten, _audioBufferSize;
-    std::unique_ptr<float[]> _audioBufferL, _audioBufferR;
+    int _audioTotalSamples;
 
     struct OggState
     {
@@ -136,12 +133,14 @@ private:
 
     void destroy();
 
+    bool open();
+
     bool readStream(); // returns false at end of file
     bool readHeaders();
 
     void initAudio();
     void shutAudio();
-    void pushAudioFrame();
+    bool pushAudioFrame(int numSamples, float* samplesL, float* samplesR);
 
     void initVideo();
     void shutVideo();
@@ -159,10 +158,11 @@ public:
     VideoPlayer(void* userData);
     virtual ~VideoPlayer();
 
-    VideoPlayerState::Value state() const
+    VideoPlayerState state() const
     { return _state; }
 
-    bool open(VideoDataCallback dataCallback, VideoCreateTextureCallback createTextureCallback, VideoUploadTextureCallback uploadTextureCallback);
+    bool openCallback(VideoDataCallback dataCallback, VideoCreateTextureCallback createTextureCallback, VideoUploadTextureCallback uploadTextureCallback);
+    bool openFile(std::string filePath, VideoCreateTextureCallback createTextureCallback, VideoUploadTextureCallback uploadTextureCallback);
 
     void play();
     bool isPlaying() const
@@ -187,5 +187,6 @@ public:
     void processVideo();
 
     void getFrameSize(int& width, int& height, int& x, int& y);
+    void getAudioInfo(int& numSamples, int& channels, int& frequency);
     void pcmRead(float* data, int numSamples);
 };
