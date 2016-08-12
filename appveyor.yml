@@ -1,5 +1,9 @@
 # Windows (https://github.com/travis-ci-tester/toolchain-table)
 
+branches:
+  only:
+    - master
+
 environment:
   matrix:
     - TOOLCHAIN: "vs-14-2015"
