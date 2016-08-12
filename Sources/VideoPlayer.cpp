@@ -187,19 +187,27 @@ void VideoPlayer::shutAudio()
 {
 }
 
-bool VideoPlayer::pushAudioFrame(int numSamples, float* samplesL, float* samplesR)
+void VideoPlayer::pushAudioFrame()
 {
+    float **pcm = nullptr;
+    int numSamples = vorbis_synthesis_pcmout(&_oggState.vorbisDSPState, &pcm);
+    if (numSamples == 0) // There are no PCM samples
+    {
+        return;
+    }
+
     std::unique_ptr<AudioFrame> frame(new AudioFrame());
     frame->numSamples = numSamples;
     frame->samplesL.reset(new float[numSamples]);
-    memcpy(frame->samplesL.get(), samplesL, sizeof(float) * numSamples);
+    memcpy(frame->samplesL.get(), pcm[0], sizeof(float) * numSamples);
     frame->samplesR.reset(new float[numSamples]);
-    memcpy(frame->samplesR.get(), samplesR, sizeof(float) * numSamples);
+    memcpy(frame->samplesR.get(), pcm[1], sizeof(float) * numSamples);
 
     std::unique_lock<std::mutex> lock(_audioMutex);
     _audioFrames.push_back(std::move(frame));
     _audioTotalSamples += numSamples;
-    return _audioTotalSamples >= VIDEO_PLAYER_AUDIO_BUFFER_SIZE;
+
+    vorbis_synthesis_read(&_oggState.vorbisDSPState, numSamples);
 }
 
 void VideoPlayer::initVideo()
@@ -322,7 +330,7 @@ void VideoPlayer::getAudioInfo(int& numSamples, int& channels, int& frequency)
     }
     else
     {
-        numSamples = _oggState.vorbisInfo.rate;
+        numSamples = _oggState.vorbisInfo.rate / 10;
         channels = _oggState.vorbisInfo.channels;
         frequency = _oggState.vorbisInfo.rate;
     }
@@ -375,10 +383,11 @@ void VideoPlayer::threadDecode(VideoPlayer* p)
 
     p->_timer = 0;
     p->_timeLastFrame = 0;
+
+    p->_videoFrames.clear();
     p->_videoTime = 0;
     p->_processVideo = false;
 
-    p->_videoFrames.clear();
     p->_audioFrames.clear();
     p->_audioTotalSamples = 0;
 
@@ -400,30 +409,24 @@ void VideoPlayer::threadDecode(VideoPlayer* p)
         }
 
         // Decode audio
-        while (p->_oggState.hasVorbis && !audioReady)
+        while (p->_oggState.hasVorbis && !audioReady && p->_audioTotalSamples < VIDEO_PLAYER_AUDIO_BUFFER_SIZE)
         {
-            float **pcm = nullptr;
-            int result = vorbis_synthesis_pcmout(&p->_oggState.vorbisDSPState, &pcm);
-            if (result > 0) // There are PCM samples
+            int result = ogg_stream_packetout(&p->_oggState.vorbisStreamState, &packet);
+            if (result > 0)
             {
-                audioReady = p->pushAudioFrame(result, pcm[0], pcm[1]);
-                vorbis_synthesis_read(&p->_oggState.vorbisDSPState, result);
+                result = vorbis_synthesis(&p->_oggState.vorbisBlock, &packet);
+                if (result == 0)
+                {
+                    result = vorbis_synthesis_blockin(&p->_oggState.vorbisDSPState, &p->_oggState.vorbisBlock);
+                    if (result == 0)
+                    {
+                        audioReady = true;
+                    }
+                }
             }
             else
             {
-                result = ogg_stream_packetout(&p->_oggState.vorbisStreamState, &packet);
-                if (result > 0)
-                {
-                    result = vorbis_synthesis(&p->_oggState.vorbisBlock, &packet);
-                    if (result == 0)
-                    {
-                        vorbis_synthesis_blockin(&p->_oggState.vorbisDSPState, &p->_oggState.vorbisBlock);
-                    }
-                }
-                else
-                {
-                    break;
-                }
+                break;
             }
         }
 
@@ -452,7 +455,7 @@ void VideoPlayer::threadDecode(VideoPlayer* p)
             break;
         }
 
-        if ((p->_oggState.hasVorbis && !audioReady)
+        if ((p->_oggState.hasVorbis && !audioReady && p->_audioTotalSamples < VIDEO_PLAYER_AUDIO_BUFFER_SIZE)
             || (p->_oggState.hasTheora && !videoReady && p->_videoFrames.size() < VIDEO_PLAYER_VIDEO_BUFFERED_FRAMES))
         {
             bool success = p->readStream();
@@ -474,11 +477,8 @@ void VideoPlayer::threadDecode(VideoPlayer* p)
 
         if (streaming && audioReady)
         {
-            std::unique_lock<std::mutex> lock(p->_audioMutex);
-            if (p->_audioTotalSamples < VIDEO_PLAYER_AUDIO_BUFFER_SIZE)
-            {
-                audioReady = false;
-            }
+            p->pushAudioFrame();
+            audioReady = false;
         }
         if (streaming && videoReady)
         {
@@ -486,7 +486,6 @@ void VideoPlayer::threadDecode(VideoPlayer* p)
             videoReady = false;
         }
 
-        //p->processVideo();
         p->_processVideo = true;
     }
 

@@ -96,12 +96,12 @@ public class VideoPlayer : MonoBehaviour
         VPGetAudioInfo(player, out numSamples, out channels, out frequency);
         if (numSamples > 0)
         {
-            //audioClip = AudioClip.Create(streamingAssetsFileName, numSamples, 2, frequency, true, OnPCMReadCallback, OnPCMSetPositionCallback);
-            //var audioSource = GetComponent<AudioSource>();
-            //if (audioSource != null)
-            //{
-            //    audioSource.clip = audioClip;
-            //}
+            var audioSource = GetComponent<AudioSource>();
+            if (audioSource != null)
+            {
+                audioClip = AudioClip.Create(streamingAssetsFileName, numSamples, 2, frequency, true, OnPCMReadCallback, OnPCMSetPositionCallback);
+                audioSource.clip = audioClip;
+            }
         }
     }
 

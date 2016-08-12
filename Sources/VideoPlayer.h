@@ -15,7 +15,7 @@
 #include <vorbis/codec.h>
 
 #define VIDEO_PLAYER_OGG_BUFFER_SIZE 4096
-#define VIDEO_PLAYER_AUDIO_BUFFER_SIZE 16384
+#define VIDEO_PLAYER_AUDIO_BUFFER_SIZE 32768
 #define VIDEO_PLAYER_VIDEO_BUFFERED_FRAMES 3
 #define MALLOC malloc
 #define FREE free
@@ -85,7 +85,7 @@ private:
         int numSamples, samplesRead;
 
         AudioFrame()
-            :samplesL(nullptr), samplesR(nullptr), numSamples(0), samplesRead(0)
+            : samplesL(nullptr), samplesR(nullptr), numSamples(0), samplesRead(0)
         {
         }
     };
@@ -141,7 +141,7 @@ private:
 
     void initAudio();
     void shutAudio();
-    bool pushAudioFrame(int numSamples, float* samplesL, float* samplesR);
+    void pushAudioFrame();
 
     void initVideo();
     void shutVideo();
