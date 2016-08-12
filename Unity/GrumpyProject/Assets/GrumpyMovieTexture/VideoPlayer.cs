@@ -80,7 +80,6 @@ public class VideoPlayer : MonoBehaviour
 
     void OnDisable()
     {
-        asset.Close();
         VPDestroy(player);
         player = IntPtr.Zero;
         handle.Free();
