@@ -6,7 +6,7 @@ osx_image: xcode7.2
 install:
   # Install latest Unity
   - wget https://github.com/sttz/install-unity/raw/master/install-unity.py
-  - sudo python install-unity.py 5.3
+  - sudo python install-unity.py --package Unity 5.3
   # Download latest master
   - wget https://github.com/speps/GrumpyMovieTexture/archive/master.zip
   - unzip master.zip

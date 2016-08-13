@@ -10,7 +10,7 @@
     "files":
         [
         {"includePattern": "GrumpyMovieTexture-master/Unity/GrumpyProject/(GrumpyMovieTexture\\.unityPackage)", "uploadPattern": "$1", "matrixParams": { "override": 1 } },
-        {"includePattern": "(GrumpyMovieTexture\\.log)", "uploadPattern": "$1", "matrixParams": { "override": 1 } }
+        {"includePattern": "GrumpyMovieTexture.log", "uploadPattern": "GrumpyMovieTexture.log", "matrixParams": { "override": 1 } }
         ],
     "publish": true
 }
