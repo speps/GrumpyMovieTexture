@@ -1,0 +1,15 @@
+{
+    "package": {
+        "name": "Packages",
+        "repo": "GrumpyMovieTexture",
+        "subject": "speps"
+    },
+    "version": {
+        "name": "Latest"
+    },
+    "files":
+        [
+        {"includePattern": "GrumpyMovieTexture.unityPackage", "matrixParams": { "override": 1 } }
+        ],
+    "publish": true
+}

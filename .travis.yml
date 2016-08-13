@@ -4,8 +4,21 @@ os:
 osx_image: xcode7.2
 
 install:
+  # Install latest Unity
   - wget https://github.com/sttz/install-unity/raw/master/install-unity.py
   - sudo python install-unity.py 5.3
+  # Download latest master
+  - wget https://github.com/speps/GrumpyMovieTexture/archive/master.zip
+  - unzip master.zip
+  - export GMT_ROOT="`pwd`/GrumpyMovieTexture-master"
+  - export GMT_UNITY="${GMT_ROOT}/Unity/GrumpyProject"
 
 script:
-  - python install-unity.py --help
+  - /Applications/Unity/Unity.app/Contents/MacOS/Unity -batchmode -projectPath "${GMT_UNITY}" -exportPackage "${GMT_UNITY}/Assets" "GrumpyMovieTexture.unityPackage" -quit
+
+deploy:
+  provider: bintray
+  file: .bintray.json
+  user: speps
+  key:
+    secure: DG49j2AIMm6ga/lM8XaZ0QGXrciG2t5FQJRtvFY3ujMrJvcu6q3WO2Bnmzvh/RiiOpXAZ7MLEXaJKS0/iE7RshE58lAOS7D3lzuDBQphhkem/tpM9tRc8/3VL07dwB6h2KrCs1u0WEC/qJdE5SyF2eu/43dkng+ctcYUSKFff0yL+wDRTNuo/C+xA2buoNeUN+2R/xJrfEBDX3pxQ+UjBYENbCTIvamJ5N1nWMXqCEP5j6x2DmT/x0WTGJMzQ2amNVsuD6usL/WLJb4BnhnaQhsMuFnLHxQZSzDNsTiV5yl52xD0ITtsIUOgGW5zjR0h9Nth1iM6JeeUfDbiYjJcNQpYQD28LnUk2sTgxYF/ey1JvN8buKUkVcPxgneLbJdKGo+UgpIUtYn8kUAvcCUjTjc1zrqKT+cpuaSkb6WI9U3qqMZU3OjORnBO4HVFxBFAP6BL4P2Sc08hcw8f568xFIWx1maA0+/go6hBa1WKe3PYbUcjh2LGIhEgTkLiTH//xWaxHbUkcWSZLelJyy8FfbgNtMbWIGFk4JSq/owO5cem64bBpZrO3vuO3ewyDrPfn1QPSLo7kKjDvs5nVI0Z7IMynFyzv6KcKSwGmLPHhySj/Cv33vey+Ua/chwHx/Gl8w7W+acl/Wnq7ZAaAnvW79mGovqJcmOd/TguryOqUp8=
