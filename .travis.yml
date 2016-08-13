@@ -10,11 +10,15 @@ install:
   # Download latest master
   - wget https://github.com/speps/GrumpyMovieTexture/archive/master.zip
   - unzip master.zip
+  - export GMT_LOG="`pwd`/GrumpyMovieTexture.log"
   - export GMT_ROOT="`pwd`/GrumpyMovieTexture-master"
   - export GMT_UNITY="${GMT_ROOT}/Unity/GrumpyProject"
 
 script:
-  - /Applications/Unity/Unity.app/Contents/MacOS/Unity -batchmode -projectPath "${GMT_UNITY}" -exportPackage "${GMT_UNITY}/Assets" "GrumpyMovieTexture.unityPackage" -quit
+  - /Applications/Unity/Unity.app/Contents/MacOS/Unity -batchmode -nographics -logFile "${GMT_LOG}" -projectPath "${GMT_UNITY}" -exportPackage "${GMT_UNITY}/Assets" "GrumpyMovieTexture.unityPackage" -quit
+
+after_failure:
+  - cat "${GMT_LOG}"
 
 deploy:
   provider: bintray

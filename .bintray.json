@@ -9,7 +9,8 @@
     },
     "files":
         [
-        {"includePattern": "GrumpyMovieTexture.unityPackage", "matrixParams": { "override": 1 } }
+        {"includePattern": "GrumpyMovieTexture.unityPackage", "matrixParams": { "override": 1 } },
+        {"includePattern": "GrumpyMovieTexture.log", "matrixParams": { "override": 1 } }
         ],
     "publish": true
 }
