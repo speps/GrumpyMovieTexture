@@ -15,7 +15,7 @@ install:
   - export GMT_UNITY="${GMT_ROOT}/Unity/GrumpyProject"
 
 script:
-  - /Applications/Unity/Unity.app/Contents/MacOS/Unity -batchmode -nographics -logFile "${GMT_LOG}" -projectPath "${GMT_UNITY}" -exportPackage "${GMT_UNITY}/Assets" "GrumpyMovieTexture.unityPackage" -quit
+  - /Applications/Unity/Unity.app/Contents/MacOS/Unity -batchmode -nographics -logFile "${GMT_LOG}" -projectPath "${GMT_UNITY}" -exportPackage "Assets" "GrumpyMovieTexture.unityPackage" -quit
 
 after_failure:
   - cat "${GMT_LOG}"
