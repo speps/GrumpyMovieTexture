@@ -55,7 +55,7 @@ private:
     std::condition_variable _pauseEvent;
     std::atomic<bool> _processVideo;
 
-    std::chrono::time_point<std::chrono::high_resolution_clock> _startTime;
+    std::chrono::time_point<std::chrono::high_resolution_clock> _startTime, _time;
     double _timer, _timeLastFrame;
     void* _bufferTextures[3];
 
@@ -99,6 +99,7 @@ private:
     int _audioTotalSamples;
 
     RtAudio _rtAudio;
+    static int RtCallback(void *outputBuffer, void *inputBuffer, unsigned int nFrames, double streamTime, RtAudioStreamStatus status, void *userData);
 
     struct OggState
     {

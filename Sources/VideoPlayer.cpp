@@ -179,11 +179,7 @@ bool VideoPlayer::readHeaders()
     return _oggState.hasTheora || _oggState.hasVorbis;
 }
 
-int RtCallback( void *outputBuffer, void *inputBuffer,
-                                unsigned int nFrames,
-                                double streamTime,
-                                RtAudioStreamStatus status,
-                                void *userData )
+int VideoPlayer::RtCallback(void *outputBuffer, void *inputBuffer, unsigned int nFrames, double streamTime, RtAudioStreamStatus status, void *userData)
 {
     VideoPlayer* p = (VideoPlayer*)userData;
     p->pcmRead((float*)outputBuffer, nFrames);
@@ -195,11 +191,10 @@ void VideoPlayer::initAudio()
     RtAudio::StreamParameters outputParams;
     outputParams.deviceId = _rtAudio.getDefaultOutputDevice();
     outputParams.nChannels = _oggState.vorbisInfo.channels;
-    if (outputParams.deviceId != 0)
+    if (_rtAudio.getDeviceCount() > 0)
     {
         unsigned int bufferFrames = VIDEO_PLAYER_AUDIO_BUFFER_SIZE;
         _rtAudio.openStream(&outputParams, nullptr, RTAUDIO_FLOAT32, _oggState.vorbisInfo.rate, &bufferFrames, RtCallback, this);
-        _rtAudio.startStream();
     }
 }
 
@@ -416,7 +411,8 @@ void VideoPlayer::threadDecode(VideoPlayer* p)
     ogg_packet packet = {};
     ogg_int64_t videoGranule = 0;
 
-    p->_startTime = std::chrono::high_resolution_clock::now();
+    p->_time = std::chrono::high_resolution_clock::now();
+    p->_startTime = p->_time;
     p->_timer = 0;
     p->_timeLastFrame = 0;
 
@@ -508,6 +504,10 @@ void VideoPlayer::threadDecode(VideoPlayer* p)
         if (!streaming && (!p->_oggState.hasVorbis || audioReady) && (!p->_oggState.hasTheora || videoReady))
         {
             streaming = true;
+            if (p->_rtAudio.isStreamOpen())
+            {
+                p->_rtAudio.startStream();
+            }
             p->_timer = 0.0;
         }
 
@@ -660,8 +660,15 @@ void VideoPlayer::update()
 {
     if (_state == VideoPlayerState::Playing)
     {
-        std::chrono::duration<double> timeSinceStart = std::chrono::high_resolution_clock::now() - _startTime;
-        _timer = timeSinceStart.count();
+        auto now = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> timeSinceStart = now - _startTime;
+        std::chrono::duration<double> deltaTime = now - _time;
+        if (_rtAudio.isStreamRunning())
+        {
+            _timer = _rtAudio.getStreamTime();
+        }
+        _timer += deltaTime.count();
+        _time = now;
     }
     processVideo();
 }
