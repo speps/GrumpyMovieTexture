@@ -9,13 +9,15 @@
 #include <condition_variable>
 #include <thread>
 #include <string>
+#include <chrono>
 
 #include <ogg/ogg.h>
 #include <theora/theoradec.h>
 #include <vorbis/codec.h>
+#include <RtAudio.h>
 
 #define VIDEO_PLAYER_OGG_BUFFER_SIZE 4096
-#define VIDEO_PLAYER_AUDIO_BUFFER_SIZE 32768
+#define VIDEO_PLAYER_AUDIO_BUFFER_SIZE 4096
 #define VIDEO_PLAYER_VIDEO_BUFFERED_FRAMES 3
 #define MALLOC malloc
 #define FREE free
@@ -53,6 +55,7 @@ private:
     std::condition_variable _pauseEvent;
     std::atomic<bool> _processVideo;
 
+    std::chrono::time_point<std::chrono::high_resolution_clock> _startTime;
     double _timer, _timeLastFrame;
     void* _bufferTextures[3];
 
@@ -94,6 +97,8 @@ private:
 
     std::mutex _audioMutex;
     int _audioTotalSamples;
+
+    RtAudio _rtAudio;
 
     struct OggState
     {
@@ -184,7 +189,7 @@ public:
         return _state == VideoPlayerState::Stopped;
     }
 
-    void update(float timeStep);
+    void update();
     void processVideo();
 
     void getFrameSize(int& width, int& height, int& x, int& y);

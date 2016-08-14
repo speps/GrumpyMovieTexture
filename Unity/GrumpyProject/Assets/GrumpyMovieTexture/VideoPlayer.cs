@@ -47,16 +47,10 @@ public class VideoPlayer : MonoBehaviour
     private static extern bool VPOpenFile(IntPtr player, string filePath, CreateTextureCallback createTextureCallback, UploadTextureCallback uploadTextureCallback);
 
     [DllImport(DLLName)]
-    private static extern void VPUpdate(IntPtr player, float timeStep);
+    private static extern void VPUpdate(IntPtr player);
 
     [DllImport(DLLName)]
     private static extern void VPGetFrameSize(IntPtr player, out int width, out int height, out int x, out int y);
-
-    [DllImport(DLLName)]
-    private static extern void VPGetAudioInfo(IntPtr player, out int numSamples, out int channels, out int frequency);
-    
-    [DllImport(DLLName)]
-    private static extern void VPPCMRead(IntPtr player, IntPtr data, int numSamples);
     
     public string streamingAssetsFileName;
     public RenderTexture renderTexture;
@@ -66,7 +60,6 @@ public class VideoPlayer : MonoBehaviour
     Material material;
     Rect sourceRect;
     Texture2D[] textures = new Texture2D[3];
-    AudioClip audioClip;
 
     void OnEnable()
     {
@@ -92,17 +85,6 @@ public class VideoPlayer : MonoBehaviour
         int width, height, x, y;
         VPGetFrameSize(player, out width, out height, out x, out y);
         sourceRect = new Rect(x, y, width, height);
-        int numSamples, channels, frequency;
-        VPGetAudioInfo(player, out numSamples, out channels, out frequency);
-        if (numSamples > 0)
-        {
-            var audioSource = GetComponent<AudioSource>();
-            if (audioSource != null)
-            {
-                audioClip = AudioClip.Create(streamingAssetsFileName, numSamples, 2, frequency, true, OnPCMReadCallback, OnPCMSetPositionCallback);
-                audioSource.clip = audioClip;
-            }
-        }
     }
 
     [MonoPInvokeCallback(typeof(CreateTextureCallback))]
@@ -123,22 +105,9 @@ public class VideoPlayer : MonoBehaviour
         player.textures[index].Apply();
     }
 
-    void OnPCMReadCallback(float[] data)
+    void FixedUpdate()
     {
-        if (audioClip != null)
-        {
-            var handle = GCHandle.Alloc(data, GCHandleType.Pinned);
-            VPPCMRead(player, handle.AddrOfPinnedObject(), data.Length / 2);
-            handle.Free();
-        }
-    }
-    void OnPCMSetPositionCallback(int newPosition)
-    {
-    }
-
-    void Update()
-    {
-        VPUpdate(player, Time.deltaTime);
+        VPUpdate(player);
         if (textures[0] != null)
         {
             RenderTexture.active = renderTexture;
@@ -160,11 +129,6 @@ public class VideoPlayer : MonoBehaviour
         {
             OpenResource();
         }
-        var audioSource = GetComponent<AudioSource>();
-        if (audioSource != null)
-        {
-            audioSource.Play();
-        }
         VPPlay(player);
     }
 
@@ -176,10 +140,5 @@ public class VideoPlayer : MonoBehaviour
     public void Stop()
     {
         VPStop(player);
-        var audioSource = GetComponent<AudioSource>();
-        if (audioSource != null)
-        {
-            audioSource.Stop();
-        }
     }
 }

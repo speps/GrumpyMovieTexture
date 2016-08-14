@@ -48,9 +48,9 @@ extern "C" UNITY_INTERFACE_EXPORT bool VPIsStopped(VideoPlayer* player)
     return player->isStopped();
 }
 
-extern "C" UNITY_INTERFACE_EXPORT void VPUpdate(VideoPlayer* player, float timeStep)
+extern "C" UNITY_INTERFACE_EXPORT void VPUpdate(VideoPlayer* player)
 {
-    player->update(timeStep);
+    player->update();
 }
 
 extern "C" UNITY_INTERFACE_EXPORT void VPGetFrameSize(VideoPlayer* player, int& width, int& height, int& x, int& y)
@@ -61,9 +61,4 @@ extern "C" UNITY_INTERFACE_EXPORT void VPGetFrameSize(VideoPlayer* player, int& 
 extern "C" UNITY_INTERFACE_EXPORT void VPGetAudioInfo(VideoPlayer* player, int& numSamples, int& channels, int& frequency)
 {
     player->getAudioInfo(numSamples, channels, frequency);
-}
-
-extern "C" UNITY_INTERFACE_EXPORT void VPPCMRead(VideoPlayer* player, float* data, int numSamples)
-{
-    player->pcmRead(data, numSamples);
 }

@@ -179,12 +179,40 @@ bool VideoPlayer::readHeaders()
     return _oggState.hasTheora || _oggState.hasVorbis;
 }
 
+int RtCallback( void *outputBuffer, void *inputBuffer,
+                                unsigned int nFrames,
+                                double streamTime,
+                                RtAudioStreamStatus status,
+                                void *userData )
+{
+    VideoPlayer* p = (VideoPlayer*)userData;
+    p->pcmRead((float*)outputBuffer, nFrames);
+    return 0;
+}
+
 void VideoPlayer::initAudio()
 {
+    RtAudio::StreamParameters outputParams;
+    outputParams.deviceId = _rtAudio.getDefaultOutputDevice();
+    outputParams.nChannels = _oggState.vorbisInfo.channels;
+    if (outputParams.deviceId != 0)
+    {
+        unsigned int bufferFrames = VIDEO_PLAYER_AUDIO_BUFFER_SIZE;
+        _rtAudio.openStream(&outputParams, nullptr, RTAUDIO_FLOAT32, _oggState.vorbisInfo.rate, &bufferFrames, RtCallback, this);
+        _rtAudio.startStream();
+    }
 }
 
 void VideoPlayer::shutAudio()
 {
+    if (_rtAudio.isStreamRunning())
+    {
+        _rtAudio.stopStream();
+    }
+    if (_rtAudio.isStreamOpen())
+    {
+        _rtAudio.closeStream();
+    }
 }
 
 void VideoPlayer::pushAudioFrame()
@@ -347,7 +375,6 @@ void VideoPlayer::pcmRead(float* data, int numSamples)
     std::unique_lock<std::mutex> lock(_audioMutex);
     if (numSamples > _audioTotalSamples)
     {
-        LOG("Starving, not enough total samples\n");
         memset(data, 0, sizeof(float) * numSamples);
         return;
     }
@@ -365,6 +392,8 @@ void VideoPlayer::pcmRead(float* data, int numSamples)
         const int samplesToWrite = samplesLeftToWrite < samplesLeftToRead ? samplesLeftToWrite : samplesLeftToRead;
         for(int i = 0; i < samplesToWrite; i++)
         {
+            /*output[i * 2 + 0] = (int16_t)(inputL[i] * 32767.0f);
+            output[i * 2 + 1] = (int16_t)(inputR[i] * 32767.0f);*/
             output[i * 2 + 0] = inputL[i];
             output[i * 2 + 1] = inputR[i];
         }
@@ -387,6 +416,7 @@ void VideoPlayer::threadDecode(VideoPlayer* p)
     ogg_packet packet = {};
     ogg_int64_t videoGranule = 0;
 
+    p->_startTime = std::chrono::high_resolution_clock::now();
     p->_timer = 0;
     p->_timeLastFrame = 0;
 
@@ -626,11 +656,12 @@ void VideoPlayer::stop()
     waitDecode();
 }
 
-void VideoPlayer::update(float timeStep)
+void VideoPlayer::update()
 {
     if (_state == VideoPlayerState::Playing)
     {
-        _timer += timeStep;
+        std::chrono::duration<double> timeSinceStart = std::chrono::high_resolution_clock::now() - _startTime;
+        _timer = timeSinceStart.count();
     }
     processVideo();
 }
