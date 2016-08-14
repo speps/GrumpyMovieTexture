@@ -66,11 +66,18 @@ else()
 endif()
 
 # RtAudio
-if (WIN32)
+if(WIN32)
 	list(APPEND GMT_LIBS winmm ole32)
 	add_definitions(-D__WINDOWS_DS__)
 	message(STATUS "Using Windows DirectSound")
 	list(APPEND GMT_LIBS dsound)
+endif()
+if(APPLE)
+	find_library(COREAUDIO_LIB CoreAudio)
+	find_library(COREFOUNDATION_LIB CoreFoundation)
+	list(APPEND GMT_LIBS ${COREAUDIO_LIB} ${COREFOUNDATION_LIB})
+	add_definitions(-D__MACOSX_CORE__)
+	message(STATUS "Using OSX CoreAudio")
 endif()
 
 target_include_directories(GrumpyMovieTexture PRIVATE
