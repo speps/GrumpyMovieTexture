@@ -845,7 +845,7 @@ inline void RtAudio :: showWarnings( bool value ) throw() { rtapi_->showWarnings
 
 #if defined(__MACOSX_CORE__)
 
-#include <CoreAudio/CoreAudioTypes.h>
+#include <CoreAudio/AudioHardware.h>
 
 class RtApiCore: public RtApi
 {
