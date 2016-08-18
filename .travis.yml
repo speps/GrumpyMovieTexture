@@ -31,6 +31,7 @@ addons:
 env:
   - TOOLCHAIN=osx-10-11 CONFIG=Release ARTIFACT=.bintray.osx.json ARCHS="i386;x86_64"
   - TOOLCHAIN=ios-nocodesign-9-2 CONFIG=Release EXTRA="--ios-multiarch" ARTIFACT=.bintray.ios.json ENABLE_BITCODE=YES
+  - TOOLCHAIN=ios-nocodesign-9-2 CONFIG=Debug EXTRA="--ios-multiarch" ARTIFACT=.bintray.ios.debug.json ENABLE_BITCODE=YES
 
 install:
   # Info about OS
