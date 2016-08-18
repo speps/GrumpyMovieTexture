@@ -18,5 +18,7 @@ Build/
 Library/
 Temp/
 _output/
+_builds/
+_logs/
 AssetStoreTools/
 AssetStoreTools.meta

@@ -55,7 +55,6 @@ private:
     std::condition_variable _pauseEvent;
     std::atomic<bool> _processVideo;
 
-    std::chrono::time_point<std::chrono::high_resolution_clock> _startTime, _time;
     double _timer, _timeLastFrame;
     void* _bufferTextures[3];
 
@@ -190,7 +189,7 @@ public:
         return _state == VideoPlayerState::Stopped;
     }
 
-    void update();
+    void update(float timeStep);
     void processVideo();
 
     void getFrameSize(int& width, int& height, int& x, int& y);

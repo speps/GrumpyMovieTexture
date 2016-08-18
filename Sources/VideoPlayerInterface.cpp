@@ -48,9 +48,9 @@ extern "C" UNITY_INTERFACE_EXPORT bool VPIsStopped(VideoPlayer* player)
     return player->isStopped();
 }
 
-extern "C" UNITY_INTERFACE_EXPORT void VPUpdate(VideoPlayer* player)
+extern "C" UNITY_INTERFACE_EXPORT void VPUpdate(VideoPlayer* player, float timeStep)
 {
-    player->update();
+    player->update(timeStep);
 }
 
 extern "C" UNITY_INTERFACE_EXPORT void VPGetFrameSize(VideoPlayer* player, int& width, int& height, int& x, int& y)

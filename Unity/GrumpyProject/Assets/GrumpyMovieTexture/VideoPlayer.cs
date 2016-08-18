@@ -47,7 +47,7 @@ public class VideoPlayer : MonoBehaviour
     private static extern bool VPOpenFile(IntPtr player, string filePath, CreateTextureCallback createTextureCallback, UploadTextureCallback uploadTextureCallback);
 
     [DllImport(DLLName)]
-    private static extern void VPUpdate(IntPtr player);
+    private static extern void VPUpdate(IntPtr player, float timeStep);
 
     [DllImport(DLLName)]
     private static extern void VPGetFrameSize(IntPtr player, out int width, out int height, out int x, out int y);
@@ -107,7 +107,7 @@ public class VideoPlayer : MonoBehaviour
 
     void FixedUpdate()
     {
-        VPUpdate(player);
+        VPUpdate(player, Time.fixedDeltaTime);
         if (textures[0] != null)
         {
             RenderTexture.active = renderTexture;

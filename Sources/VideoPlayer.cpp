@@ -411,8 +411,6 @@ void VideoPlayer::threadDecode(VideoPlayer* p)
     ogg_packet packet = {};
     ogg_int64_t videoGranule = 0;
 
-    p->_time = std::chrono::high_resolution_clock::now();
-    p->_startTime = p->_time;
     p->_timer = 0;
     p->_timeLastFrame = 0;
 
@@ -656,19 +654,15 @@ void VideoPlayer::stop()
     waitDecode();
 }
 
-void VideoPlayer::update()
+void VideoPlayer::update(float timeStep)
 {
     if (_state == VideoPlayerState::Playing)
     {
-        auto now = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> timeSinceStart = now - _startTime;
-        std::chrono::duration<double> deltaTime = now - _time;
         if (_rtAudio.isStreamRunning())
         {
             _timer = _rtAudio.getStreamTime();
         }
-        _timer += deltaTime.count();
-        _time = now;
+        _timer += timeStep;
     }
     processVideo();
 }
