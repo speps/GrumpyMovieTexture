@@ -5,7 +5,7 @@ set(LIBOGG_SOURCES
 )
 prefix_path(LIBOGG_SOURCES "${PROJECT_SOURCE_DIR}/External/${LIBOGG_VERSION}/src")
 
-set(LIBTHEORA_VERSION libtheora-1.2.0alpha1)
+set(LIBTHEORA_VERSION libtheora-2016-08-19)
 set(LIBTHEORA_SOURCES
 	apiwrapper.c
 	bitpack.c
@@ -22,16 +22,16 @@ set(LIBTHEORA_SOURCES
 	state.c
 	encoder_disabled.c
 )
-if(IOS)
-	list(APPEND LIBTHEORA_SOURCES
-		arm/armcpu.c
-		arm/armstate.c
-		arm/armbits.s
-		arm/armfrag.s
-		arm/armidct.s
-		arm/armopts.s
-	)
-endif()
+#if(IOS)
+#	list(APPEND LIBTHEORA_SOURCES
+#		arm/armcpu.c
+#		arm/armstate.c
+#		arm/armbits-iPhone.S
+#		arm/armfrag-iPhone.S
+#		arm/armidct-iPhone.S
+#		arm/armloop-iPhone.S
+#	)
+#endif()
 prefix_path(LIBTHEORA_SOURCES "${PROJECT_SOURCE_DIR}/External/${LIBTHEORA_VERSION}/lib")
 
 set(LIBVORBIS_VERSION libvorbis-1.3.3)

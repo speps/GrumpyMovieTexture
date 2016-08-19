@@ -11,18 +11,18 @@
 ;********************************************************************
 ; Original implementation:
 ;  Copyright (C) 2009 Robin Watts for Pinknoise Productions Ltd
-; last mod: $Id: armopts.s.in 17430 2010-09-22 21:54:09Z tterribe $
+; last mod: $Id$
 ;********************************************************************
 
 ; Set the following to 1 if we have EDSP instructions
 ;  (LDRD/STRD, etc., ARMv5E and later).
-OC_ARM_ASM_EDSP		*	0
+OC_ARM_ASM_EDSP		*	@HAVE_ARM_ASM_EDSP@
 
 ; Set the following to 1 if we have ARMv6 media instructions.
-OC_ARM_ASM_MEDIA	*	0
+OC_ARM_ASM_MEDIA	*	@HAVE_ARM_ASM_MEDIA@
 
 ; Set the following to 1 if we have NEON (some ARMv7)
-OC_ARM_ASM_NEON		*	1
+OC_ARM_ASM_NEON		*	@HAVE_ARM_ASM_NEON@
 
 ; Set the following to 1 if LDR/STR can work on unaligned addresses
 ; This is assumed to be true for ARMv6 and later code
