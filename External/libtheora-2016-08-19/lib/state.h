@@ -55,6 +55,9 @@ typedef struct oc_theora_state          oc_theora_state;
 # if defined(OC_ARM_ASM)
 #  include "arm/armint.h"
 # endif
+# if defined(OC_NEON)
+#  include "neon/neonint.h"
+# endif
 # if defined(OC_C64X_ASM)
 #  include "c64x/c64xint.h"
 # endif
