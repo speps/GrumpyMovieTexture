@@ -26,10 +26,10 @@ set(LIBTHEORA_SOURCES
 #	list(APPEND LIBTHEORA_SOURCES
 #		arm/armcpu.c
 #		arm/armstate.c
-#		arm/armbits-iPhone.S
-#		arm/armfrag-iPhone.S
-#		arm/armidct-iPhone.S
-#		arm/armloop-iPhone.S
+#		arm/armbits.s
+#		arm/armfrag.s
+#		arm/armidct.s
+#		arm/armloop.s
 #	)
 #endif()
 prefix_path(LIBTHEORA_SOURCES "${PROJECT_SOURCE_DIR}/External/${LIBTHEORA_VERSION}/lib")
