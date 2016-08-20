@@ -22,16 +22,13 @@ set(LIBTHEORA_SOURCES
 	state.c
 	encoder_disabled.c
 )
-#if(IOS)
-#	list(APPEND LIBTHEORA_SOURCES
-#		arm/armcpu.c
-#		arm/armstate.c
-#		arm/armbits.s
-#		arm/armfrag.s
-#		arm/armidct.s
-#		arm/armloop.s
-#	)
-#endif()
+if(IOS)
+	list(APPEND LIBTHEORA_SOURCES
+		neon/neoncpu.c
+		neon/neonstate.c
+		neon/neonfrag.c
+	)
+endif()
 prefix_path(LIBTHEORA_SOURCES "${PROJECT_SOURCE_DIR}/External/${LIBTHEORA_VERSION}/lib")
 
 set(LIBVORBIS_VERSION libvorbis-1.3.3)
@@ -66,7 +63,7 @@ set(GMT_SOURCES
 )
 
 if(IOS)
-	add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-stdlib=libc++>)
+	add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-stdlib=libc++> -O3)
 	add_library(GrumpyMovieTexture STATIC ${GMT_SOURCES})
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 	add_library(GrumpyMovieTexture MODULE ${GMT_SOURCES})
@@ -82,12 +79,15 @@ if(WIN32)
 	message(STATUS "Using Windows DirectSound")
 	list(APPEND GMT_LIBS dsound)
 endif()
-if(APPLE AND NOT IOS)
-	find_library(COREAUDIO_LIB CoreAudio)
-	find_library(COREFOUNDATION_LIB CoreFoundation)
-	list(APPEND GMT_LIBS ${COREAUDIO_LIB} ${COREFOUNDATION_LIB})
-	add_definitions(-D__MACOSX_CORE__)
-	message(STATUS "Using OSX CoreAudio")
+if(APPLE)
+	if(IOS)
+	else()
+		find_library(COREAUDIO_LIB CoreAudio)
+		find_library(COREFOUNDATION_LIB CoreFoundation)
+		list(APPEND GMT_LIBS ${COREAUDIO_LIB} ${COREFOUNDATION_LIB})
+		add_definitions(-D__MACOSX_CORE__)
+		message(STATUS "Using OSX CoreAudio")
+	endif()
 endif()
 
 target_include_directories(GrumpyMovieTexture PRIVATE
