@@ -127,6 +127,9 @@ void RtAudio :: getCompiledApi( std::vector<RtAudio::Api> &apis ) throw()
 #if defined(__MACOSX_CORE__)
   apis.push_back( MACOSX_CORE );
 #endif
+#if defined(__MACOSX_AQ__)
+  apis.push_back( MACOSX_AQ );
+#endif
 #if defined(__RTAUDIO_DUMMY__)
   apis.push_back( RTAUDIO_DUMMY );
 #endif
@@ -169,6 +172,10 @@ void RtAudio :: openRtApi( RtAudio::Api api )
 #if defined(__MACOSX_CORE__)
   if ( api == MACOSX_CORE )
     rtapi_ = new RtApiCore();
+#endif
+#if defined(__MACOSX_AQ__)
+  if ( api == MACOSX_AQ )
+    rtapi_ = new RtApiAq();
 #endif
 #if defined(__RTAUDIO_DUMMY__)
   if ( api == RTAUDIO_DUMMY )
@@ -1888,6 +1895,68 @@ const char* RtApiCore :: getErrorCode( OSStatus code )
 }
 
   //******************** End of __MACOSX_CORE__ *********************//
+#endif
+
+#if defined(__MACOSX_AQ__)
+
+RtApiAq :: RtApiAq()
+{
+}
+
+RtApiAq :: ~RtApiAq()
+{
+  // The subclass destructor gets called before the base class
+  // destructor, so close an existing stream before deallocating
+  // apiDeviceId memory.
+  if ( stream_.state != STREAM_CLOSED ) closeStream();
+}
+
+unsigned int RtApiAq :: getDeviceCount( void )
+{
+  return 0;
+}
+
+unsigned int RtApiAq :: getDefaultInputDevice( void )
+{
+  return 0;
+}
+
+unsigned int RtApiAq :: getDefaultOutputDevice( void )
+{
+  return 0;
+}
+
+RtAudio::DeviceInfo RtApiAq :: getDeviceInfo( unsigned int device )
+{
+  RtAudio::DeviceInfo info;
+  return info;
+}
+
+bool RtApiAq :: probeDeviceOpen( unsigned int device, StreamMode mode, unsigned int channels,
+                                   unsigned int firstChannel, unsigned int sampleRate,
+                                   RtAudioFormat format, unsigned int *bufferSize,
+                                   RtAudio::StreamOptions *options )
+{
+  return SUCCESS;
+}
+
+void RtApiAq :: closeStream( void )
+{
+}
+
+void RtApiAq :: startStream( void )
+{
+}
+
+void RtApiAq :: stopStream( void )
+{
+}
+
+void RtApiAq :: abortStream( void )
+{
+}
+
+  //******************** End of __MACOSX_AQ__ *********************//
 #endif
 
 #if defined(__UNIX_JACK__)

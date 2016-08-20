@@ -270,6 +270,7 @@ class RtAudio
     LINUX_OSS,      /*!< The Linux Open Sound System API. */
     UNIX_JACK,      /*!< The Jack Low-Latency Audio Server API. */
     MACOSX_CORE,    /*!< Macintosh OS-X Core Audio API. */
+    MACOSX_AQ,      /*!< Macintosh OS-X / iOS Audio Queues API. */
     WINDOWS_WASAPI, /*!< The Microsoft WASAPI API. */
     WINDOWS_ASIO,   /*!< The Steinberg Audio Stream I/O API. */
     WINDOWS_DS,     /*!< The Microsoft Direct Sound API. */
@@ -879,6 +880,35 @@ public:
                         RtAudioFormat format, unsigned int *bufferSize,
                         RtAudio::StreamOptions *options );
   static const char* getErrorCode( OSStatus code );
+};
+
+#endif
+
+#if defined(__MACOSX_AQ__)
+
+#include <AudioToolbox/AudioToolbox.h>
+
+class RtApiAq: public RtApi
+{
+public:
+  RtApiAq();
+  ~RtApiAq();
+  RtAudio::Api getCurrentApi( void ) { return RtAudio::MACOSX_AQ; }
+  unsigned int getDeviceCount( void );
+  RtAudio::DeviceInfo getDeviceInfo( unsigned int device );
+  unsigned int getDefaultOutputDevice( void );
+  unsigned int getDefaultInputDevice( void );
+  void closeStream( void );
+  void startStream( void );
+  void stopStream( void );
+  void abortStream( void );
+  long getStreamLatency( void );
+
+private:
+  bool probeDeviceOpen( unsigned int device, StreamMode mode, unsigned int channels, 
+                        unsigned int firstChannel, unsigned int sampleRate,
+                        RtAudioFormat format, unsigned int *bufferSize,
+                        RtAudio::StreamOptions *options );
 };
 
 #endif
