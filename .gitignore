@@ -20,5 +20,6 @@ Temp/
 _output/
 _builds/
 _logs/
+build-*.sh
 AssetStoreTools/
 AssetStoreTools.meta
