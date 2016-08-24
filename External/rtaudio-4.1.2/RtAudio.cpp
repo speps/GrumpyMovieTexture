@@ -1899,11 +1899,12 @@ const char* RtApiCore :: getErrorCode( OSStatus code )
 
 #if defined(__MACOSX_AQ__)
 
-RtApiAq :: RtApiAq()
+RtApiAq::RtApiAq()
+  : queue_(NULL), buffers_(NULL)
 {
 }
 
-RtApiAq :: ~RtApiAq()
+RtApiAq::~RtApiAq()
 {
   // The subclass destructor gets called before the base class
   // destructor, so close an existing stream before deallocating
@@ -1911,48 +1912,197 @@ RtApiAq :: ~RtApiAq()
   if ( stream_.state != STREAM_CLOSED ) closeStream();
 }
 
-unsigned int RtApiAq :: getDeviceCount( void )
+unsigned int RtApiAq::getDeviceCount( void )
+{
+  return 1;
+}
+
+unsigned int RtApiAq::getDefaultInputDevice( void )
 {
   return 0;
 }
 
-unsigned int RtApiAq :: getDefaultInputDevice( void )
+unsigned int RtApiAq::getDefaultOutputDevice( void )
 {
   return 0;
 }
 
-unsigned int RtApiAq :: getDefaultOutputDevice( void )
-{
-  return 0;
-}
-
-RtAudio::DeviceInfo RtApiAq :: getDeviceInfo( unsigned int device )
+RtAudio::DeviceInfo RtApiAq::getDeviceInfo( unsigned int device )
 {
   RtAudio::DeviceInfo info;
+  info.name = "Default Audio Device";
+  info.outputChannels = 1;
+  info.inputChannels = 0; // TODO
+  info.duplexChannels = 0;
+  info.isDefaultOutput = true;
+  info.isDefaultInput = false;
+  info.sampleRates.clear();
+  for ( unsigned int i=0; i<MAX_SAMPLE_RATES; i++ ) {
+      info.sampleRates.push_back( SAMPLE_RATES[i] );
+  }
+  info.preferredSampleRate = 48000;
+  info.nativeFormats = 0;
+  info.nativeFormats |= RTAUDIO_SINT8;
+  info.nativeFormats |= RTAUDIO_SINT16;
+  info.nativeFormats |= RTAUDIO_FLOAT32;
   return info;
 }
 
-bool RtApiAq :: probeDeviceOpen( unsigned int device, StreamMode mode, unsigned int channels,
+void audioQueueOutputCallback(void* userData, AudioQueueRef audioQueue, AudioQueueBufferRef buffer)
+{
+    pcmReadCallback((int16_t*)buffer->mAudioData, buffer->mAudioDataBytesCapacity / (format.mBitsPerChannel / 8) / format.mChannelsPerFrame);
+    buffer->mAudioDataByteSize = buffer->mAudioDataBytesCapacity;
+    AudioQueueEnqueueBuffer(audioQueue, buffer, 0, nullptr);
+}
+
+bool RtApiAq::probeDeviceOpen( unsigned int device, StreamMode mode, unsigned int channels,
                                    unsigned int firstChannel, unsigned int sampleRate,
                                    RtAudioFormat format, unsigned int *bufferSize,
                                    RtAudio::StreamOptions *options )
 {
+  if ( device != 0 ) return FAILURE;
+  if ( mode != OUTPUT ) return FAILURE;
+  if ( channels != 1 && channels != 2 ) {
+    errorText_ = "RtApiAq::probeDeviceOpen: unsupported number of channels.";
+    return FAILURE;
+  }
+  if ( firstChannel != 0 ) return FAILURE;
+
+  unsigned int nBuffers = 0;
+  if ( options ) nBuffers = options->numberOfBuffers;
+  if ( nBuffers < 3 ) nBuffers = 3;
+
+  bool deviceFormat = true;
+
+  AudioStreamBasicDescription format;
+  format.mSampleRate = sampleRate;
+  format.mFormatID = kAudioFormatLinearPCM;
+  format.mFormatFlags = kLinearPCMFormatFlagIsPacked;
+  format.mChannelsPerFrame = channels;
+  switch ( format )
+  {
+    case RTAUDIO_SINT8:
+      format.mBitsPerChannel = 8;
+      format.mFormatFlags |= kLinearPCMFormatFlagIsSignedInteger;
+      break;
+    case RTAUDIO_SINT16:
+      format.mBitsPerChannel = 16;
+      format.mFormatFlags |= kLinearPCMFormatFlagIsSignedInteger;
+      break;
+    case RTAUDIO_FLOAT32:
+      format.mBitsPerChannel = 32;
+      format.mFormatFlags |= kLinearPCMFormatFlagIsFloat;
+      break;
+    default:
+      deviceFormat = false;
+      format.mBitsPerChannel = 32;
+      format.mFormatFlags |= kLinearPCMFormatFlagIsFloat;
+      break;
+  }
+  format.mFramesPerPacket = 1;
+  format.mBytesPerFrame = format.mChannelsPerFrame * format.mBitsPerChannel / 8;
+  format.mBytesPerPacket = format.mBytesPerFrame * format.mFramesPerPacket;
+
+  OSStatus status;
+
+  status = AudioQueueNewOutput(&format, readCallback, nullptr, nullptr, nullptr, 0, &queue_);
+  if ( status != 0 )
+  {
+    errorStream_ << "RtApiAq::probeDeviceOpen: error creating output " << status;
+    errorText_ = errorStream_.str();
+    return FAILURE;
+  }
+
+  stream_.state = STREAM_STOPPED;
+  buffers_ = new AudioQueueBufferRef[nBuffers];
+
+  const unsigned int bufferBytes = *bufferSize * format.mChannelsPerFrame * format.mBitsPerChannel / 8;
+
+  for (unsigned int i = 0; i < nBuffers; i++)
+  {
+      status = AudioQueueAllocateBuffer(queue_, bufferBytes, &buffers_[i]);
+      if ( status != 0 )
+        goto error;
+      audioQueueOutputCallback(this, queue, buffers[i]);
+  }
+
+  stream_.userFormat[mode] = format;
+  stream_.deviceFormat[mode] = deviceFormat ? format : RTAUDIO_FLOAT32;
+  stream_.nUserChannels[mode] = channels;
+  stream_.nDeviceChannels[mode] = channels + firstChannel;
+
+  stream_.doConvertBuffer[mode] = false;
+  if ( stream_.userFormat != stream_.deviceFormat[mode] )
+    stream_.doConvertBuffer[mode] = true;
+  if ( stream_.nUserChannels[mode] < stream_.nDeviceChannels[mode] )
+    stream_.doConvertBuffer[mode] = true;
+
+  stream_.device[mode] = 0;
+  stream_.mode = mode;
+  if ( options && options->flags & RTAUDIO_NONINTERLEAVED ) stream_.userInterleaved = false;
+  else stream_.userInterleaved = true;
+  stream_.deviceInterleaved[mode] = true;
+  stream_.sampleRate = sampleRate;
+  stream_.bufferSize = *bufferSize;
+  stream_.nBuffers = nBuffers;
+
+  if ( stream_.userBuffer[mode] ) free( stream_.deviceBuffer );
+  stream_.userBuffer[mode] = (char *) calloc( bufferBytes, 1 );
+  if ( stream_.userBuffer[mode] == NULL ) {
+    errorText_ = "RtApiAq::probeDeviceOpen: error allocating user buffer memory.";
+    goto error;
+  }
+
+  if ( stream_.deviceBuffer ) free( stream_.deviceBuffer );
+  stream_.deviceBuffer = (char *) calloc( bufferBytes, 1 );
+  if ( stream_.deviceBuffer == NULL ) {
+    errorText_ = "RtApiAq::probeDeviceOpen: error allocating device buffer memory.";
+    goto error;
+  }
+
+  if ( stream_.doConvertBuffer[mode] )
+    setConvertInfo( mode, firstChannel );
+
   return SUCCESS;
+
+error:
+  closeStream();
+  return FAILURE;
 }
 
-void RtApiAq :: closeStream( void )
+void RtApiAq::closeStream( void )
+{
+  if ( stream_.userBuffer[0] ) {
+    free( stream_.userBuffer[0] );
+    stream_.userBuffer[0] = 0;
+  }
+  if ( stream_.userBuffer[1] ) {
+    free( stream_.userBuffer[1] );
+    stream_.userBuffer[1] = 0;
+  }
+
+  for (unsigned int i = 0; i < nBuffers; i++)
+  {
+    if ( buffers_[i] != NULL )
+      AudioQueueFreeBuffer(queue_, buffers_[i]);
+  }
+  delete[] buffers_;
+  buffers_ = NULL;
+  AudioQueueDispose(queue_, true);
+
+  stream_.state = STREAM_CLOSED;
+  stream_.mode = UNINITIALIZED;
+}
+
+void RtApiAq::startStream( void )
 {
 }
 
-void RtApiAq :: startStream( void )
+void RtApiAq::stopStream( void )
 {
 }
 
-void RtApiAq :: stopStream( void )
-{
-}
-
-void RtApiAq :: abortStream( void )
+void RtApiAq::abortStream( void )
 {
 }
 

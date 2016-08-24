@@ -909,6 +909,9 @@ private:
                         unsigned int firstChannel, unsigned int sampleRate,
                         RtAudioFormat format, unsigned int *bufferSize,
                         RtAudio::StreamOptions *options );
+
+  AudioQueueRef queue_;
+  AudioQueueBufferRef* buffers_;
 };
 
 #endif
