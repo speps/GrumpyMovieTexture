@@ -904,6 +904,9 @@ public:
   void abortStream( void );
   long getStreamLatency( void );
 
+  void callbackEvent( AudioQueueRef audioQueue, AudioQueueBufferRef buffer );
+  void queryIsRunning( AudioQueueRef audioQueue );
+
 private:
   bool probeDeviceOpen( unsigned int device, StreamMode mode, unsigned int channels, 
                         unsigned int firstChannel, unsigned int sampleRate,

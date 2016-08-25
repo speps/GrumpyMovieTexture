@@ -1948,11 +1948,84 @@ RtAudio::DeviceInfo RtApiAq::getDeviceInfo( unsigned int device )
   return info;
 }
 
-void audioQueueOutputCallback(void* userData, AudioQueueRef audioQueue, AudioQueueBufferRef buffer)
+struct AqHandle
 {
-    pcmReadCallback((int16_t*)buffer->mAudioData, buffer->mAudioDataBytesCapacity / (format.mBitsPerChannel / 8) / format.mChannelsPerFrame);
+  bool isRunning;
+  pthread_cond_t cvIsRunning;
+
+  AqHandle()
+    : isRunning(false) {}
+};
+
+void audioQueueOutputCallback( void* userData, AudioQueueRef audioQueue, AudioQueueBufferRef buffer )
+{
+  RtApiAq* api = static_cast<RtApiAq*>( userData );
+  api->callbackEvent( audioQueue, buffer );
+}
+
+int RtApiAq::callbackEvent( AudioQueueRef audioQueue, AudioQueueBufferRef buffer )
+{
+  RtAudioCallback callback = (RtAudioCallback) stream_.callbackInfo.callback;
+  double streamTime = getStreamTime();
+  RtAudioStreamStatus status = 0;
+  int doStopStream = callback( stream_.userBuffer[OUTPUT], stream_.userBuffer[INPUT],
+                               stream_.bufferSize, streamTime, status,
+                               stream_.callbackInfo.userData );
+
+  if ( doStopStream == 2 ) {
+    abortStream();
+    goto unlock;
+  }
+
+  MUTEX_LOCK( &stream_.mutex );
+
+  if ( stream_.state != STREAM_RUNNING )
+    goto unlock;
+
+  if ( stream_.mode == OUTPUT || stream_.mode == DUPLEX ) {
+    void *outBuffer = stream_.userBuffer[OUTPUT];
+    if ( stream_.doConvertBuffer[OUTPUT] ) {
+      convertBuffer( stream_.deviceBuffer, stream_.userBuffer[OUTPUT], stream_.convertInfo[OUTPUT] );
+      outBuffer = stream_.deviceBuffer;
+    }
+
+    memcpy(buffer->mAudioData, outBuffer, buffer->mAudioDataBytesCapacity);
     buffer->mAudioDataByteSize = buffer->mAudioDataBytesCapacity;
-    AudioQueueEnqueueBuffer(audioQueue, buffer, 0, nullptr);
+
+    OSStatus status = AudioQueueEnqueueBuffer(audioQueue, buffer, 0, nullptr);
+    if ( status != 0 ) {
+      errorStream_ << "RtApiAq::callbackEvent: audio write error, " << status << ".";
+      errorText_ = errorStream_.str();
+      error( RtAudioError::WARNING );
+    }
+  }
+
+unlock:
+  MUTEX_UNLOCK( &stream_.mutex );
+  RtApi::tickStreamTime();
+
+  if ( doStopStream == 1 )
+    stopStream();
+}
+
+void audioQueueIsRunningListener( void *userData, AudioQueueRef audioQueue, AudioQueuePropertyID  id )
+{
+  RtApiAq* api = static_cast<RtApiAq*>( userData );
+  api->queryIsRunning( audioQueue );
+}
+
+void RtApiAq::queryIsRunning( AudioQueueRef audioQueue )
+{
+  uint32_t isRunning = false;
+  OSStatus status = AudioQueueGetProperty( audioQueue, kAudioQueueProperty_IsRunning, &isRunning, sizeof(isRunning) );
+  if (status == 0)
+  {
+    AqHandle* handle = static_cast<AqHandle*>(stream_.apiHandle);
+    MUTEX_LOCK( &stream_.mutex );
+    handle->isRunning = isRunning;
+    pthread_cond_signal( handle->cvIsRunning );
+    MUTEX_UNLOCK( &stream_.mutex );
+  }
 }
 
 bool RtApiAq::probeDeviceOpen( unsigned int device, StreamMode mode, unsigned int channels,
@@ -2003,14 +2076,14 @@ bool RtApiAq::probeDeviceOpen( unsigned int device, StreamMode mode, unsigned in
   format.mBytesPerFrame = format.mChannelsPerFrame * format.mBitsPerChannel / 8;
   format.mBytesPerPacket = format.mBytesPerFrame * format.mFramesPerPacket;
 
-  OSStatus status;
-
-  status = AudioQueueNewOutput(&format, readCallback, nullptr, nullptr, nullptr, 0, &queue_);
-  if ( status != 0 )
   {
-    errorStream_ << "RtApiAq::probeDeviceOpen: error creating output " << status;
-    errorText_ = errorStream_.str();
-    return FAILURE;
+    OSStatus status = AudioQueueNewOutput(&format, audioQueueOutputCallback, nullptr, nullptr, nullptr, 0, &queue_);
+    if ( status != 0 )
+    {
+      errorStream_ << "RtApiAq::probeDeviceOpen: error creating output " << status;
+      errorText_ = errorStream_.str();
+      return FAILURE;
+    }
   }
 
   stream_.state = STREAM_STOPPED;
@@ -2063,6 +2136,25 @@ bool RtApiAq::probeDeviceOpen( unsigned int device, StreamMode mode, unsigned in
   if ( stream_.doConvertBuffer[mode] )
     setConvertInfo( mode, firstChannel );
 
+  if ( stream_.apiHandle == NULL )
+  {
+    stream_.apiHandle = new AqHandle();
+    if ( pthread_cond_init( &handle->cvIsRunning, NULL ) != 0 ) {
+      errorText_ = "RtApiAq::probeDeviceOpen: error creating condition variable.";
+      goto error;
+    }
+  }
+
+  {
+    OSStatus status = AudioQueueAddPropertyListener(queue_, kAudioQueueProperty_IsRunning, audioQueuePropertyListener, this);
+    if ( status != 0 )
+    {
+      errorStream_ << "RtApiAq::probeDeviceOpen: error adding listener " << status;
+      errorText_ = errorStream_.str();
+      goto error;
+    }
+  }
+
   return SUCCESS;
 
 error:
@@ -2072,6 +2164,10 @@ error:
 
 void RtApiAq::closeStream( void )
 {
+  if ( stream_.deviceBuffer ) {
+    free( stream_.deviceBuffer );
+    stream_.deviceBuffer = 0;
+  }
   if ( stream_.userBuffer[0] ) {
     free( stream_.userBuffer[0] );
     stream_.userBuffer[0] = 0;
@@ -2090,16 +2186,69 @@ void RtApiAq::closeStream( void )
   buffers_ = NULL;
   AudioQueueDispose(queue_, true);
 
+  AqHandle* handle = static_cast<AqHandle*>(stream_.apiHandle);
+  pthread_cond_destroy( &handle->cvIsRunning );
+  delete handle;
+  stream_.apiHandle = NULL;
   stream_.state = STREAM_CLOSED;
   stream_.mode = UNINITIALIZED;
 }
 
 void RtApiAq::startStream( void )
 {
+  if ( stream_.state == STREAM_CLOSED ) {
+    errorText_ = "RtApiAq::startStream(): the stream is not open!";
+    error( RtAudioError::INVALID_USE );
+    return;
+  }
+  if ( stream_.state == STREAM_RUNNING ) {
+    errorText_ = "RtApiAq::startStream(): the stream is already running!";
+    error( RtAudioError::WARNING );
+    return;
+  }
+
+  MUTEX_LOCK( &stream_.mutex );
+  OSStatus status = AudioQueueStart(queue_, nullptr);
+  if (status != 0) {
+    errorStream_ << "RtApiAq::startStream(): error starting stream " << status;
+    errorText_ = errorStream_.str();
+    error( RtAudioError::WARNING );
+  } else {
+    AqHandle* handle = static_cast<AqHandle*>(stream_.apiHandle);
+    while ( !handle->isRunning )
+      pthread_cond_wait( &handle->cvIsRunning, &stream_.mutex );
+  }
+  stream_.state = STREAM_RUNNING;
+  MUTEX_UNLOCK( &stream_.mutex );
 }
 
 void RtApiAq::stopStream( void )
 {
+  if ( stream_.state == STREAM_CLOSED ) {
+    errorText_ = "RtApiAq::stopStream(): the stream is not open!";
+    error( RtAudioError::INVALID_USE );
+    return;
+  }
+  if ( stream_.state == STREAM_STOPPED ) {
+    errorText_ = "RtApiAq::stopStream(): the stream is already stopped!";
+    error( RtAudioError::WARNING );
+    return;
+  }
+
+  MUTEX_LOCK( &stream_.mutex );
+
+  OSStatus status = AudioQueueStop(queue_, false);
+  if (status != 0) {
+    errorStream_ << "RtApiAq::stopStream(): error stopping stream " << status;
+    errorText_ = errorStream_.str();
+    error( RtAudioError::WARNING );
+  } else {
+    AqHandle* handle = static_cast<AqHandle*>(stream_.apiHandle);
+    while ( handle->isRunning )
+      pthread_cond_wait( &handle->cvIsRunning, &stream_.mutex );
+  }
+  stream_.state = STREAM_STOPPED;
+  MUTEX_UNLOCK( &stream_.mutex );
 }
 
 void RtApiAq::abortStream( void )
