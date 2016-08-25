@@ -2047,37 +2047,37 @@ bool RtApiAq::probeDeviceOpen( unsigned int device, StreamMode mode, unsigned in
 
   bool deviceFormat = true;
 
-  AudioStreamBasicDescription format;
-  format.mSampleRate = sampleRate;
-  format.mFormatID = kAudioFormatLinearPCM;
-  format.mFormatFlags = kLinearPCMFormatFlagIsPacked;
-  format.mChannelsPerFrame = channels;
+  AudioStreamBasicDescription formatDesc;
+  formatDesc.mSampleRate = sampleRate;
+  formatDesc.mFormatID = kAudioFormatLinearPCM;
+  formatDesc.mFormatFlags = kLinearPCMFormatFlagIsPacked;
+  formatDesc.mChannelsPerFrame = channels;
   switch ( format )
   {
     case RTAUDIO_SINT8:
-      format.mBitsPerChannel = 8;
-      format.mFormatFlags |= kLinearPCMFormatFlagIsSignedInteger;
+      formatDesc.mBitsPerChannel = 8;
+      formatDesc.mFormatFlags |= kLinearPCMFormatFlagIsSignedInteger;
       break;
     case RTAUDIO_SINT16:
-      format.mBitsPerChannel = 16;
-      format.mFormatFlags |= kLinearPCMFormatFlagIsSignedInteger;
+      formatDesc.mBitsPerChannel = 16;
+      formatDesc.mFormatFlags |= kLinearPCMFormatFlagIsSignedInteger;
       break;
     case RTAUDIO_FLOAT32:
-      format.mBitsPerChannel = 32;
-      format.mFormatFlags |= kLinearPCMFormatFlagIsFloat;
+      formatDesc.mBitsPerChannel = 32;
+      formatDesc.mFormatFlags |= kLinearPCMFormatFlagIsFloat;
       break;
     default:
       deviceFormat = false;
-      format.mBitsPerChannel = 32;
-      format.mFormatFlags |= kLinearPCMFormatFlagIsFloat;
+      formatDesc.mBitsPerChannel = 32;
+      formatDesc.mFormatFlags |= kLinearPCMFormatFlagIsFloat;
       break;
   }
-  format.mFramesPerPacket = 1;
-  format.mBytesPerFrame = format.mChannelsPerFrame * format.mBitsPerChannel / 8;
-  format.mBytesPerPacket = format.mBytesPerFrame * format.mFramesPerPacket;
+  formatDesc.mFramesPerPacket = 1;
+  formatDesc.mBytesPerFrame = formatDesc.mChannelsPerFrame * formatDesc.mBitsPerChannel / 8;
+  formatDesc.mBytesPerPacket = formatDesc.mBytesPerFrame * formatDesc.mFramesPerPacket;
 
   {
-    OSStatus status = AudioQueueNewOutput(&format, audioQueueOutputCallback, nullptr, nullptr, nullptr, 0, &queue_);
+    OSStatus status = AudioQueueNewOutput(&formatDesc, audioQueueOutputCallback, nullptr, nullptr, nullptr, 0, &queue_);
     if ( status != 0 )
     {
       errorStream_ << "RtApiAq::probeDeviceOpen: error creating output " << status;
