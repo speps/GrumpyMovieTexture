@@ -2078,7 +2078,7 @@ bool RtApiAq::probeDeviceOpen( unsigned int device, StreamMode mode, unsigned in
   formatDesc.mBytesPerPacket = formatDesc.mBytesPerFrame * formatDesc.mFramesPerPacket;
 
   {
-    OSStatus status = AudioQueueNewOutput(&formatDesc, audioQueueOutputCallback, nullptr, nullptr, nullptr, 0, &queue_);
+    OSStatus status = AudioQueueNewOutput(&formatDesc, audioQueueOutputCallback, this, nullptr, nullptr, 0, &queue_);
     if ( status != 0 )
     {
       errorStream_ << "RtApiAq::probeDeviceOpen: error creating output " << status;
@@ -2094,9 +2094,14 @@ bool RtApiAq::probeDeviceOpen( unsigned int device, StreamMode mode, unsigned in
 
   for (unsigned int i = 0; i < nBuffers; i++)
   {
-      OSStatus status = AudioQueueAllocateBuffer(queue_, bufferBytes, &buffers_[i]);
+      AudioQueueBufferRef buffer;
+      OSStatus status = AudioQueueAllocateBuffer(queue_, bufferBytes, &buffer);
       if ( status != 0 )
         goto error;
+      memset(buffer->mAudioData, 0, buffer->mAudioDataBytesCapacity);
+      buffer->mAudioDataByteSize = buffer->mAudioDataBytesCapacity;
+      AudioQueueEnqueueBuffer(queue_, buffer, 0, nullptr);
+      buffers_[i] = buffer;
   }
 
   stream_.userFormat = format;
