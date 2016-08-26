@@ -1,5 +1,9 @@
 # OSX/Linux (https://github.com/travis-ci-tester/toolchain-table)
 
+branches:
+  only:
+    - master
+
 language:
   - cpp
 
