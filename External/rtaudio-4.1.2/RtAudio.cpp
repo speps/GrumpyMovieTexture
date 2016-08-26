@@ -1948,15 +1948,6 @@ RtAudio::DeviceInfo RtApiAq::getDeviceInfo( unsigned int device )
   return info;
 }
 
-struct AqHandle
-{
-  bool isRunning;
-  pthread_cond_t cvIsRunning;
-
-  AqHandle()
-    : isRunning(false) {}
-};
-
 void audioQueueOutputCallback( void* userData, AudioQueueRef audioQueue, AudioQueueBufferRef buffer )
 {
   RtApiAq* api = static_cast<RtApiAq*>( userData );
@@ -1974,13 +1965,11 @@ void RtApiAq::callbackEvent( AudioQueueRef audioQueue, AudioQueueBufferRef buffe
 
   if ( doStopStream == 2 ) {
     abortStream();
-    goto unlock;
+    return;
   }
 
-  MUTEX_LOCK( &stream_.mutex );
-
   if ( stream_.state != STREAM_RUNNING )
-    goto unlock;
+    goto end;
 
   if ( stream_.mode == OUTPUT || stream_.mode == DUPLEX ) {
     void *outBuffer = stream_.userBuffer[OUTPUT];
@@ -2000,32 +1989,11 @@ void RtApiAq::callbackEvent( AudioQueueRef audioQueue, AudioQueueBufferRef buffe
     }
   }
 
-unlock:
-  MUTEX_UNLOCK( &stream_.mutex );
+end:
   RtApi::tickStreamTime();
 
-  if ( doStopStream == 1 )
+  if ( doStopStream == 1 ) {
     stopStream();
-}
-
-void audioQueueIsRunningListener( void *userData, AudioQueueRef audioQueue, AudioQueuePropertyID  id )
-{
-  RtApiAq* api = static_cast<RtApiAq*>( userData );
-  api->queryIsRunning( audioQueue );
-}
-
-void RtApiAq::queryIsRunning( AudioQueueRef audioQueue )
-{
-  UInt32 isRunning = false;
-  UInt32 dataSize = sizeof( isRunning );
-  OSStatus status = AudioQueueGetProperty( audioQueue, kAudioQueueProperty_IsRunning, &isRunning, &dataSize );
-  if (status == 0)
-  {
-    AqHandle* handle = static_cast<AqHandle*>(stream_.apiHandle);
-    MUTEX_LOCK( &stream_.mutex );
-    handle->isRunning = isRunning;
-    pthread_cond_signal( &handle->cvIsRunning );
-    MUTEX_UNLOCK( &stream_.mutex );
   }
 }
 
@@ -2141,26 +2109,6 @@ bool RtApiAq::probeDeviceOpen( unsigned int device, StreamMode mode, unsigned in
   if ( stream_.doConvertBuffer[mode] )
     setConvertInfo( mode, firstChannel );
 
-  if ( stream_.apiHandle == NULL )
-  {
-    AqHandle* handle = new AqHandle();
-    stream_.apiHandle = handle;
-    if ( pthread_cond_init( &handle->cvIsRunning, NULL ) != 0 ) {
-      errorText_ = "RtApiAq::probeDeviceOpen: error creating condition variable.";
-      goto error;
-    }
-  }
-
-  {
-    OSStatus status = AudioQueueAddPropertyListener(queue_, kAudioQueueProperty_IsRunning, audioQueueIsRunningListener, this);
-    if ( status != 0 )
-    {
-      errorStream_ << "RtApiAq::probeDeviceOpen: error adding listener " << status;
-      errorText_ = errorStream_.str();
-      goto error;
-    }
-  }
-
   return SUCCESS;
 
 error:
@@ -2192,10 +2140,6 @@ void RtApiAq::closeStream( void )
   buffers_ = NULL;
   AudioQueueDispose(queue_, true);
 
-  AqHandle* handle = static_cast<AqHandle*>(stream_.apiHandle);
-  pthread_cond_destroy( &handle->cvIsRunning );
-  delete handle;
-  stream_.apiHandle = NULL;
   stream_.state = STREAM_CLOSED;
   stream_.mode = UNINITIALIZED;
 }
@@ -2213,19 +2157,13 @@ void RtApiAq::startStream( void )
     return;
   }
 
-  MUTEX_LOCK( &stream_.mutex );
   OSStatus status = AudioQueueStart(queue_, nullptr);
   if (status != 0) {
     errorStream_ << "RtApiAq::startStream(): error starting stream " << status;
     errorText_ = errorStream_.str();
     error( RtAudioError::WARNING );
-  } else {
-    AqHandle* handle = static_cast<AqHandle*>(stream_.apiHandle);
-    while ( !handle->isRunning )
-      pthread_cond_wait( &handle->cvIsRunning, &stream_.mutex );
   }
   stream_.state = STREAM_RUNNING;
-  MUTEX_UNLOCK( &stream_.mutex );
 }
 
 void RtApiAq::stopStream( void )
@@ -2241,20 +2179,14 @@ void RtApiAq::stopStream( void )
     return;
   }
 
-  MUTEX_LOCK( &stream_.mutex );
-
-  OSStatus status = AudioQueueStop(queue_, false);
+  AudioQueueFlush(queue_);
+  stream_.state = STREAM_STOPPED;
+  OSStatus status = AudioQueueStop(queue_, true);
   if (status != 0) {
     errorStream_ << "RtApiAq::stopStream(): error stopping stream " << status;
     errorText_ = errorStream_.str();
     error( RtAudioError::WARNING );
-  } else {
-    AqHandle* handle = static_cast<AqHandle*>(stream_.apiHandle);
-    while ( handle->isRunning )
-      pthread_cond_wait( &handle->cvIsRunning, &stream_.mutex );
   }
-  stream_.state = STREAM_STOPPED;
-  MUTEX_UNLOCK( &stream_.mutex );
 }
 
 void RtApiAq::abortStream( void )
