@@ -75,7 +75,7 @@ const unsigned int RtApi::SAMPLE_RATES[] = {
     return s;
   }
 
-#elif defined(__LINUX_ALSA__) || defined(__LINUX_PULSE__) || defined(__UNIX_JACK__) || defined(__LINUX_OSS__) || defined(__MACOSX_CORE__)
+#elif defined(__LINUX_ALSA__) || defined(__LINUX_PULSE__) || defined(__UNIX_JACK__) || defined(__LINUX_OSS__) || defined(__MACOSX_CORE__) || defined(__MACOSX_AQ__)
   // pthread API
   #define MUTEX_INITIALIZE(A) pthread_mutex_init(A, NULL)
   #define MUTEX_DESTROY(A)    pthread_mutex_destroy(A)
@@ -1963,7 +1963,7 @@ void audioQueueOutputCallback( void* userData, AudioQueueRef audioQueue, AudioQu
   api->callbackEvent( audioQueue, buffer );
 }
 
-int RtApiAq::callbackEvent( AudioQueueRef audioQueue, AudioQueueBufferRef buffer )
+void RtApiAq::callbackEvent( AudioQueueRef audioQueue, AudioQueueBufferRef buffer )
 {
   RtAudioCallback callback = (RtAudioCallback) stream_.callbackInfo.callback;
   double streamTime = getStreamTime();
@@ -2016,14 +2016,15 @@ void audioQueueIsRunningListener( void *userData, AudioQueueRef audioQueue, Audi
 
 void RtApiAq::queryIsRunning( AudioQueueRef audioQueue )
 {
-  uint32_t isRunning = false;
-  OSStatus status = AudioQueueGetProperty( audioQueue, kAudioQueueProperty_IsRunning, &isRunning, sizeof(isRunning) );
+  UInt32 isRunning = false;
+  UInt32 dataSize = sizeof( isRunning );
+  OSStatus status = AudioQueueGetProperty( audioQueue, kAudioQueueProperty_IsRunning, &isRunning, &dataSize );
   if (status == 0)
   {
     AqHandle* handle = static_cast<AqHandle*>(stream_.apiHandle);
     MUTEX_LOCK( &stream_.mutex );
     handle->isRunning = isRunning;
-    pthread_cond_signal( handle->cvIsRunning );
+    pthread_cond_signal( &handle->cvIsRunning );
     MUTEX_UNLOCK( &stream_.mutex );
   }
 }
@@ -2089,17 +2090,16 @@ bool RtApiAq::probeDeviceOpen( unsigned int device, StreamMode mode, unsigned in
   stream_.state = STREAM_STOPPED;
   buffers_ = new AudioQueueBufferRef[nBuffers];
 
-  const unsigned int bufferBytes = *bufferSize * format.mChannelsPerFrame * format.mBitsPerChannel / 8;
+  const unsigned int bufferBytes = *bufferSize * formatDesc.mChannelsPerFrame * formatDesc.mBitsPerChannel / 8;
 
   for (unsigned int i = 0; i < nBuffers; i++)
   {
-      status = AudioQueueAllocateBuffer(queue_, bufferBytes, &buffers_[i]);
+      OSStatus status = AudioQueueAllocateBuffer(queue_, bufferBytes, &buffers_[i]);
       if ( status != 0 )
         goto error;
-      audioQueueOutputCallback(this, queue, buffers[i]);
   }
 
-  stream_.userFormat[mode] = format;
+  stream_.userFormat = format;
   stream_.deviceFormat[mode] = deviceFormat ? format : RTAUDIO_FLOAT32;
   stream_.nUserChannels[mode] = channels;
   stream_.nDeviceChannels[mode] = channels + firstChannel;
@@ -2138,7 +2138,8 @@ bool RtApiAq::probeDeviceOpen( unsigned int device, StreamMode mode, unsigned in
 
   if ( stream_.apiHandle == NULL )
   {
-    stream_.apiHandle = new AqHandle();
+    AqHandle* handle = new AqHandle();
+    stream_.apiHandle = handle;
     if ( pthread_cond_init( &handle->cvIsRunning, NULL ) != 0 ) {
       errorText_ = "RtApiAq::probeDeviceOpen: error creating condition variable.";
       goto error;
@@ -2146,7 +2147,7 @@ bool RtApiAq::probeDeviceOpen( unsigned int device, StreamMode mode, unsigned in
   }
 
   {
-    OSStatus status = AudioQueueAddPropertyListener(queue_, kAudioQueueProperty_IsRunning, audioQueuePropertyListener, this);
+    OSStatus status = AudioQueueAddPropertyListener(queue_, kAudioQueueProperty_IsRunning, audioQueueIsRunningListener, this);
     if ( status != 0 )
     {
       errorStream_ << "RtApiAq::probeDeviceOpen: error adding listener " << status;
@@ -2177,7 +2178,7 @@ void RtApiAq::closeStream( void )
     stream_.userBuffer[1] = 0;
   }
 
-  for (unsigned int i = 0; i < nBuffers; i++)
+  for (unsigned int i = 0; i < stream_.nBuffers; i++)
   {
     if ( buffers_[i] != NULL )
       AudioQueueFreeBuffer(queue_, buffers_[i]);
