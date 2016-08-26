@@ -75,7 +75,7 @@ const unsigned int RtApi::SAMPLE_RATES[] = {
     return s;
   }
 
-#elif defined(__LINUX_ALSA__) || defined(__LINUX_PULSE__) || defined(__UNIX_JACK__) || defined(__LINUX_OSS__) || defined(__MACOSX_CORE__)
+#elif defined(__LINUX_ALSA__) || defined(__LINUX_PULSE__) || defined(__UNIX_JACK__) || defined(__LINUX_OSS__) || defined(__MACOSX_CORE__) || defined(__MACOSX_AQ__)
   // pthread API
   #define MUTEX_INITIALIZE(A) pthread_mutex_init(A, NULL)
   #define MUTEX_DESTROY(A)    pthread_mutex_destroy(A)
@@ -1899,11 +1899,12 @@ const char* RtApiCore :: getErrorCode( OSStatus code )
 
 #if defined(__MACOSX_AQ__)
 
-RtApiAq :: RtApiAq()
+RtApiAq::RtApiAq()
+  : queue_(NULL), buffers_(NULL)
 {
 }
 
-RtApiAq :: ~RtApiAq()
+RtApiAq::~RtApiAq()
 {
   // The subclass destructor gets called before the base class
   // destructor, so close an existing stream before deallocating
@@ -1911,48 +1912,284 @@ RtApiAq :: ~RtApiAq()
   if ( stream_.state != STREAM_CLOSED ) closeStream();
 }
 
-unsigned int RtApiAq :: getDeviceCount( void )
+unsigned int RtApiAq::getDeviceCount( void )
+{
+  return 1;
+}
+
+unsigned int RtApiAq::getDefaultInputDevice( void )
 {
   return 0;
 }
 
-unsigned int RtApiAq :: getDefaultInputDevice( void )
+unsigned int RtApiAq::getDefaultOutputDevice( void )
 {
   return 0;
 }
 
-unsigned int RtApiAq :: getDefaultOutputDevice( void )
-{
-  return 0;
-}
-
-RtAudio::DeviceInfo RtApiAq :: getDeviceInfo( unsigned int device )
+RtAudio::DeviceInfo RtApiAq::getDeviceInfo( unsigned int device )
 {
   RtAudio::DeviceInfo info;
+  info.name = "Default Audio Device";
+  info.outputChannels = 1;
+  info.inputChannels = 0; // TODO
+  info.duplexChannels = 0;
+  info.isDefaultOutput = true;
+  info.isDefaultInput = false;
+  info.sampleRates.clear();
+  for ( unsigned int i=0; i<MAX_SAMPLE_RATES; i++ ) {
+      info.sampleRates.push_back( SAMPLE_RATES[i] );
+  }
+  info.preferredSampleRate = 48000;
+  info.nativeFormats = 0;
+  info.nativeFormats |= RTAUDIO_SINT8;
+  info.nativeFormats |= RTAUDIO_SINT16;
+  info.nativeFormats |= RTAUDIO_FLOAT32;
   return info;
 }
 
-bool RtApiAq :: probeDeviceOpen( unsigned int device, StreamMode mode, unsigned int channels,
+void audioQueueOutputCallback( void* userData, AudioQueueRef audioQueue, AudioQueueBufferRef buffer )
+{
+  RtApiAq* api = static_cast<RtApiAq*>( userData );
+  api->callbackEvent( audioQueue, buffer );
+}
+
+void RtApiAq::callbackEvent( AudioQueueRef audioQueue, AudioQueueBufferRef buffer )
+{
+  RtAudioCallback callback = (RtAudioCallback) stream_.callbackInfo.callback;
+  double streamTime = getStreamTime();
+  RtAudioStreamStatus status = 0;
+  int doStopStream = callback( stream_.userBuffer[OUTPUT], stream_.userBuffer[INPUT],
+                               stream_.bufferSize, streamTime, status,
+                               stream_.callbackInfo.userData );
+
+  if ( doStopStream == 2 ) {
+    abortStream();
+    return;
+  }
+
+  if ( stream_.state != STREAM_RUNNING )
+    goto end;
+
+  if ( stream_.mode == OUTPUT || stream_.mode == DUPLEX ) {
+    void *outBuffer = stream_.userBuffer[OUTPUT];
+    if ( stream_.doConvertBuffer[OUTPUT] ) {
+      convertBuffer( stream_.deviceBuffer, stream_.userBuffer[OUTPUT], stream_.convertInfo[OUTPUT] );
+      outBuffer = stream_.deviceBuffer;
+    }
+
+    memcpy(buffer->mAudioData, outBuffer, buffer->mAudioDataBytesCapacity);
+    buffer->mAudioDataByteSize = buffer->mAudioDataBytesCapacity;
+
+    OSStatus status = AudioQueueEnqueueBuffer(audioQueue, buffer, 0, nullptr);
+    if ( status != 0 ) {
+      errorStream_ << "RtApiAq::callbackEvent: audio write error, " << status << ".";
+      errorText_ = errorStream_.str();
+      error( RtAudioError::WARNING );
+    }
+  }
+
+end:
+  RtApi::tickStreamTime();
+
+  if ( doStopStream == 1 ) {
+    stopStream();
+  }
+}
+
+bool RtApiAq::probeDeviceOpen( unsigned int device, StreamMode mode, unsigned int channels,
                                    unsigned int firstChannel, unsigned int sampleRate,
                                    RtAudioFormat format, unsigned int *bufferSize,
                                    RtAudio::StreamOptions *options )
 {
+  if ( device != 0 ) return FAILURE;
+  if ( mode != OUTPUT ) return FAILURE;
+  if ( channels != 1 && channels != 2 ) {
+    errorText_ = "RtApiAq::probeDeviceOpen: unsupported number of channels.";
+    return FAILURE;
+  }
+  if ( firstChannel != 0 ) return FAILURE;
+
+  unsigned int nBuffers = 0;
+  if ( options ) nBuffers = options->numberOfBuffers;
+  if ( nBuffers < 3 ) nBuffers = 3;
+
+  bool deviceFormat = true;
+
+  AudioStreamBasicDescription formatDesc;
+  formatDesc.mSampleRate = sampleRate;
+  formatDesc.mFormatID = kAudioFormatLinearPCM;
+  formatDesc.mFormatFlags = kLinearPCMFormatFlagIsPacked;
+  formatDesc.mChannelsPerFrame = channels;
+  switch ( format )
+  {
+    case RTAUDIO_SINT8:
+      formatDesc.mBitsPerChannel = 8;
+      formatDesc.mFormatFlags |= kLinearPCMFormatFlagIsSignedInteger;
+      break;
+    case RTAUDIO_SINT16:
+      formatDesc.mBitsPerChannel = 16;
+      formatDesc.mFormatFlags |= kLinearPCMFormatFlagIsSignedInteger;
+      break;
+    case RTAUDIO_FLOAT32:
+      formatDesc.mBitsPerChannel = 32;
+      formatDesc.mFormatFlags |= kLinearPCMFormatFlagIsFloat;
+      break;
+    default:
+      deviceFormat = false;
+      formatDesc.mBitsPerChannel = 32;
+      formatDesc.mFormatFlags |= kLinearPCMFormatFlagIsFloat;
+      break;
+  }
+  formatDesc.mFramesPerPacket = 1;
+  formatDesc.mBytesPerFrame = formatDesc.mChannelsPerFrame * formatDesc.mBitsPerChannel / 8;
+  formatDesc.mBytesPerPacket = formatDesc.mBytesPerFrame * formatDesc.mFramesPerPacket;
+
+  {
+    OSStatus status = AudioQueueNewOutput(&formatDesc, audioQueueOutputCallback, this, nullptr, nullptr, 0, &queue_);
+    if ( status != 0 )
+    {
+      errorStream_ << "RtApiAq::probeDeviceOpen: error creating output " << status;
+      errorText_ = errorStream_.str();
+      return FAILURE;
+    }
+  }
+
+  stream_.state = STREAM_STOPPED;
+  buffers_ = new AudioQueueBufferRef[nBuffers];
+
+  const unsigned int bufferBytes = *bufferSize * formatDesc.mChannelsPerFrame * formatDesc.mBitsPerChannel / 8;
+
+  for (unsigned int i = 0; i < nBuffers; i++)
+  {
+      AudioQueueBufferRef buffer;
+      OSStatus status = AudioQueueAllocateBuffer(queue_, bufferBytes, &buffer);
+      if ( status != 0 )
+        goto error;
+      memset(buffer->mAudioData, 0, buffer->mAudioDataBytesCapacity);
+      buffer->mAudioDataByteSize = buffer->mAudioDataBytesCapacity;
+      AudioQueueEnqueueBuffer(queue_, buffer, 0, nullptr);
+      buffers_[i] = buffer;
+  }
+
+  stream_.userFormat = format;
+  stream_.deviceFormat[mode] = deviceFormat ? format : RTAUDIO_FLOAT32;
+  stream_.nUserChannels[mode] = channels;
+  stream_.nDeviceChannels[mode] = channels + firstChannel;
+
+  stream_.doConvertBuffer[mode] = false;
+  if ( stream_.userFormat != stream_.deviceFormat[mode] )
+    stream_.doConvertBuffer[mode] = true;
+  if ( stream_.nUserChannels[mode] < stream_.nDeviceChannels[mode] )
+    stream_.doConvertBuffer[mode] = true;
+
+  stream_.device[mode] = 0;
+  stream_.mode = mode;
+  if ( options && options->flags & RTAUDIO_NONINTERLEAVED ) stream_.userInterleaved = false;
+  else stream_.userInterleaved = true;
+  stream_.deviceInterleaved[mode] = true;
+  stream_.sampleRate = sampleRate;
+  stream_.bufferSize = *bufferSize;
+  stream_.nBuffers = nBuffers;
+
+  if ( stream_.userBuffer[mode] ) free( stream_.deviceBuffer );
+  stream_.userBuffer[mode] = (char *) calloc( bufferBytes, 1 );
+  if ( stream_.userBuffer[mode] == NULL ) {
+    errorText_ = "RtApiAq::probeDeviceOpen: error allocating user buffer memory.";
+    goto error;
+  }
+
+  if ( stream_.deviceBuffer ) free( stream_.deviceBuffer );
+  stream_.deviceBuffer = (char *) calloc( bufferBytes, 1 );
+  if ( stream_.deviceBuffer == NULL ) {
+    errorText_ = "RtApiAq::probeDeviceOpen: error allocating device buffer memory.";
+    goto error;
+  }
+
+  if ( stream_.doConvertBuffer[mode] )
+    setConvertInfo( mode, firstChannel );
+
   return SUCCESS;
+
+error:
+  closeStream();
+  return FAILURE;
 }
 
-void RtApiAq :: closeStream( void )
+void RtApiAq::closeStream( void )
 {
+  if ( stream_.deviceBuffer ) {
+    free( stream_.deviceBuffer );
+    stream_.deviceBuffer = 0;
+  }
+  if ( stream_.userBuffer[0] ) {
+    free( stream_.userBuffer[0] );
+    stream_.userBuffer[0] = 0;
+  }
+  if ( stream_.userBuffer[1] ) {
+    free( stream_.userBuffer[1] );
+    stream_.userBuffer[1] = 0;
+  }
+
+  for (unsigned int i = 0; i < stream_.nBuffers; i++)
+  {
+    if ( buffers_[i] != NULL )
+      AudioQueueFreeBuffer(queue_, buffers_[i]);
+  }
+  delete[] buffers_;
+  buffers_ = NULL;
+  AudioQueueDispose(queue_, true);
+
+  stream_.state = STREAM_CLOSED;
+  stream_.mode = UNINITIALIZED;
 }
 
-void RtApiAq :: startStream( void )
+void RtApiAq::startStream( void )
 {
+  if ( stream_.state == STREAM_CLOSED ) {
+    errorText_ = "RtApiAq::startStream(): the stream is not open!";
+    error( RtAudioError::INVALID_USE );
+    return;
+  }
+  if ( stream_.state == STREAM_RUNNING ) {
+    errorText_ = "RtApiAq::startStream(): the stream is already running!";
+    error( RtAudioError::WARNING );
+    return;
+  }
+
+  OSStatus status = AudioQueueStart(queue_, nullptr);
+  if (status != 0) {
+    errorStream_ << "RtApiAq::startStream(): error starting stream " << status;
+    errorText_ = errorStream_.str();
+    error( RtAudioError::WARNING );
+  }
+  stream_.state = STREAM_RUNNING;
 }
 
-void RtApiAq :: stopStream( void )
+void RtApiAq::stopStream( void )
 {
+  if ( stream_.state == STREAM_CLOSED ) {
+    errorText_ = "RtApiAq::stopStream(): the stream is not open!";
+    error( RtAudioError::INVALID_USE );
+    return;
+  }
+  if ( stream_.state == STREAM_STOPPED ) {
+    errorText_ = "RtApiAq::stopStream(): the stream is already stopped!";
+    error( RtAudioError::WARNING );
+    return;
+  }
+
+  AudioQueueFlush(queue_);
+  stream_.state = STREAM_STOPPED;
+  OSStatus status = AudioQueueStop(queue_, true);
+  if (status != 0) {
+    errorStream_ << "RtApiAq::stopStream(): error stopping stream " << status;
+    errorText_ = errorStream_.str();
+    error( RtAudioError::WARNING );
+  }
 }
 
-void RtApiAq :: abortStream( void )
+void RtApiAq::abortStream( void )
 {
 }
 

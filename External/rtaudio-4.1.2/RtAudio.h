@@ -586,7 +586,7 @@ class RtAudio
   typedef uintptr_t ThreadHandle;
   typedef CRITICAL_SECTION StreamMutex;
 
-#elif defined(__LINUX_ALSA__) || defined(__LINUX_PULSE__) || defined(__UNIX_JACK__) || defined(__LINUX_OSS__) || defined(__MACOSX_CORE__)
+#elif defined(__LINUX_ALSA__) || defined(__LINUX_PULSE__) || defined(__UNIX_JACK__) || defined(__LINUX_OSS__) || defined(__MACOSX_CORE__) || defined(__MACOSX_AQ__)
   // Using pthread library for various flavors of unix.
   #include <pthread.h>
 
@@ -904,11 +904,16 @@ public:
   void abortStream( void );
   long getStreamLatency( void );
 
+  void callbackEvent( AudioQueueRef audioQueue, AudioQueueBufferRef buffer );
+
 private:
   bool probeDeviceOpen( unsigned int device, StreamMode mode, unsigned int channels, 
                         unsigned int firstChannel, unsigned int sampleRate,
                         RtAudioFormat format, unsigned int *bufferSize,
                         RtAudio::StreamOptions *options );
+
+  AudioQueueRef queue_;
+  AudioQueueBufferRef* buffers_;
 };
 
 #endif
