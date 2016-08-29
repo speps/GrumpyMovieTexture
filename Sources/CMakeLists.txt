@@ -74,10 +74,9 @@ endif()
 
 # RtAudio
 if(WIN32)
-	list(APPEND GMT_LIBS winmm ole32)
+	list(APPEND GMT_LIBS winmm ole32 dsound)
 	add_definitions(-D__WINDOWS_DS__)
 	message(STATUS "Using Windows DirectSound")
-	list(APPEND GMT_LIBS dsound)
 endif()
 if(APPLE)
 	find_library(AUDIOTOOLBOX_LIB AudioToolbox)

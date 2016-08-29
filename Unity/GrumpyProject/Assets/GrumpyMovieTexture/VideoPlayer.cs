@@ -51,6 +51,11 @@ public class VideoPlayer : MonoBehaviour
 
     [DllImport(DLLName)]
     private static extern void VPGetFrameSize(IntPtr player, out int width, out int height, out int x, out int y);
+
+#if UNITY_IOS
+    [DllImport ("__Internal")]
+    private static extern void AudioSessionSetup();
+#endif
     
     public string streamingAssetsFileName;
     public RenderTexture renderTexture;
@@ -129,6 +134,12 @@ public class VideoPlayer : MonoBehaviour
         {
             OpenResource();
         }
+#if UNITY_IOS
+        if (Application.platform == RuntimePlatform.IPhonePlayer)
+        {
+            AudioSessionSetup();
+        }
+#endif
         VPPlay(player);
     }
 
