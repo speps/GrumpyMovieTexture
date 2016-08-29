@@ -2193,6 +2193,17 @@ void RtApiAq::abortStream( void )
 {
 }
 
+double RtApiAq::getStreamTime( void )
+{
+  if ( stream_.state != STREAM_RUNNING ) {
+    return 0.0;
+  }
+  AudioTimeStamp timestamp;
+  AudioQueueGetCurrentTime(queue_, nullptr, &timestamp, nullptr);
+  double streamTime = timestamp.mSampleTime / stream_.sampleRate;
+  return streamTime < 0 ? 0.0 : streamTime;
+}
+
   //******************** End of __MACOSX_AQ__ *********************//
 #endif
 

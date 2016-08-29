@@ -902,7 +902,7 @@ public:
   void startStream( void );
   void stopStream( void );
   void abortStream( void );
-  long getStreamLatency( void );
+  double getStreamTime( void );
 
   void callbackEvent( AudioQueueRef audioQueue, AudioQueueBufferRef buffer );
 
