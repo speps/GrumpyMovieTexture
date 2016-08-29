@@ -28,10 +28,6 @@
 #define LOG(...)
 #endif
 
-typedef bool (*VideoDataCallback)(void* userData, uint8_t* outData, uint32_t bytesMax, uint32_t* bytesRead);
-typedef void* (*VideoCreateTextureCallback)(void* userData, int index, int width, int height);
-typedef void (*VideoUploadTextureCallback)(void* userData, int index, uint8_t* data, int size);
-
 enum class VideoPlayerState
 {
     None,
@@ -42,12 +38,18 @@ enum class VideoPlayerState
     Stopped
 };
 
+typedef void (*VideoStatusCallback)(void* userData, VideoPlayerState newState);
+typedef bool (*VideoDataCallback)(void* userData, uint8_t* outData, uint32_t bytesMax, uint32_t* bytesRead);
+typedef void* (*VideoCreateTextureCallback)(void* userData, int index, int width, int height);
+typedef void (*VideoUploadTextureCallback)(void* userData, int index, uint8_t* data, int size);
+
 class VideoPlayer
 {
 private:
     void* _userData;
     VideoPlayerState _state;
     FILE* _fileStream;
+    VideoStatusCallback _statusCallback;
     VideoDataCallback _dataCallback;
     VideoCreateTextureCallback _createTextureCallback;
     VideoUploadTextureCallback _uploadTextureCallback;
@@ -138,6 +140,7 @@ private:
     OggState _oggState;
 
     void destroy();
+    void setState(VideoPlayerState newState);
 
     bool open();
 
@@ -161,7 +164,7 @@ private:
     void cancelPause();
     bool waitPause();
 public:
-    VideoPlayer(void* userData);
+    VideoPlayer(void* userData, VideoStatusCallback statusCallback);
     virtual ~VideoPlayer();
 
     VideoPlayerState state() const

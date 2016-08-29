@@ -8,9 +8,9 @@
 #define UNITY_INTERFACE_EXPORT
 #endif
 
-extern "C" UNITY_INTERFACE_EXPORT void* VPCreate(void* userData)
+extern "C" UNITY_INTERFACE_EXPORT void* VPCreate(void* userData, VideoStatusCallback statusCallback)
 {
-    return new VideoPlayer(userData);
+    return new VideoPlayer(userData, statusCallback);
 }
 
 extern "C" UNITY_INTERFACE_EXPORT void VPDestroy(VideoPlayer* player)

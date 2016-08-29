@@ -4,10 +4,11 @@
 #include <string.h>
 #include <assert.h>
 
-VideoPlayer::VideoPlayer(void* userData)
+VideoPlayer::VideoPlayer(void* userData, VideoStatusCallback statusCallback)
     : _userData(userData), _state(VideoPlayerState::Initialized), _fileStream(nullptr)
     , _timer(0.0), _timeLastFrame(0.0), _audioTotalSamples(0), _videoTime(0.0)
-    , _dataCallback(nullptr), _createTextureCallback(nullptr), _uploadTextureCallback(nullptr)
+    , _statusCallback(statusCallback), _dataCallback(nullptr)
+    , _createTextureCallback(nullptr) , _uploadTextureCallback(nullptr)
     , _processVideo(false)
 {
 }
@@ -24,9 +25,19 @@ void VideoPlayer::destroy()
     {
         fclose(_fileStream);
     }
+    _statusCallback = nullptr;
     _dataCallback = nullptr;
     _createTextureCallback = nullptr;
     _uploadTextureCallback = nullptr;
+}
+
+void VideoPlayer::setState(VideoPlayerState newState)
+{
+    _state = newState;
+    if (_statusCallback != nullptr)
+    {
+        _statusCallback(_userData, newState);
+    }
 }
 
 bool VideoPlayer::readStream()
@@ -481,7 +492,7 @@ void VideoPlayer::threadDecode(VideoPlayer* p)
 
         if (endOfFile && !audioReady && !videoReady)
         {
-            p->_state = VideoPlayerState::Stopped;
+            p->setState(VideoPlayerState::Stopped);
             break;
         }
 
@@ -564,11 +575,11 @@ bool VideoPlayer::open()
 
     if (!readHeaders())
     {
-        _state = VideoPlayerState::Stopped;
+        setState(VideoPlayerState::Stopped);
         return false;
     }
 
-    _state = VideoPlayerState::Ready;
+    setState(VideoPlayerState::Ready);
     return true;
 }
 
@@ -616,19 +627,19 @@ void VideoPlayer::play()
         return;
     }
 
-    _state = VideoPlayerState::Playing;
+    setState(VideoPlayerState::Playing);
 
     launchDecode();
 }
 
 void VideoPlayer::pause()
 {
-    _state = VideoPlayerState::Paused;
+    setState(VideoPlayerState::Paused);
 }
 
 void VideoPlayer::resume()
 {
-    _state = VideoPlayerState::Playing;
+    setState(VideoPlayerState::Playing);
     signalPause();
 }
 
@@ -649,7 +660,7 @@ void VideoPlayer::stop()
         return;
     }
 
-    _state = VideoPlayerState::Stopped;
+    setState(VideoPlayerState::Stopped);
     cancelPause();
     waitDecode();
 }

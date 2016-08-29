@@ -8,13 +8,31 @@ public class VideoPlayer : MonoBehaviour
 {
     public class MonoPInvokeCallbackAttribute : System.Attribute
     {
-        private Type type;
+        public Type type;
         public MonoPInvokeCallbackAttribute(Type t) { type = t; }
     }
 
-    public delegate bool DataCallback(IntPtr userData, IntPtr data, int bytesMax, out int bytesRead);
-    public delegate IntPtr CreateTextureCallback(IntPtr userData, int index, int width, int height);
-    public delegate void UploadTextureCallback(IntPtr userData, int index, IntPtr data, int size);
+    public enum State
+    {
+        None,
+        Initialized,
+        // When open has succeeded
+        Ready,
+        // When play or resume has suceeded
+        Playing,
+        // When pause has been called
+        Paused,
+        // When stop has been called or end of video
+        Stopped
+    }
+
+    public delegate void StateChangedCallback(State newState);
+    public event StateChangedCallback OnStateChanged;
+
+    private delegate void StatusCallback(IntPtr userData, State newState);
+    private delegate bool DataCallback(IntPtr userData, IntPtr data, int bytesMax, out int bytesRead);
+    private delegate IntPtr CreateTextureCallback(IntPtr userData, int index, int width, int height);
+    private delegate void UploadTextureCallback(IntPtr userData, int index, IntPtr data, int size);
 
 #if UNITY_IPHONE && !UNITY_EDITOR
     public const string DLLName = "__Internal";
@@ -23,7 +41,7 @@ public class VideoPlayer : MonoBehaviour
 #endif
 
     [DllImport(DLLName)]
-    private static extern IntPtr VPCreate(IntPtr userData);
+    private static extern IntPtr VPCreate(IntPtr userData, StatusCallback statusCallback);
 
     [DllImport(DLLName)]
     private static extern void VPDestroy(IntPtr player);
@@ -56,7 +74,7 @@ public class VideoPlayer : MonoBehaviour
     [DllImport ("__Internal")]
     private static extern void AudioSessionSetup();
 #endif
-    
+
     public string streamingAssetsFileName;
     public RenderTexture renderTexture;
 
@@ -69,7 +87,7 @@ public class VideoPlayer : MonoBehaviour
     void OnEnable()
     {
         handle = GCHandle.Alloc(this);
-        player = VPCreate(GCHandle.ToIntPtr(handle));
+        player = VPCreate(GCHandle.ToIntPtr(handle), OnStatusCallback);
         var shader = Shader.Find("Hidden/GrumpyConvertRGB");
         material = new Material(shader);
 
@@ -90,6 +108,17 @@ public class VideoPlayer : MonoBehaviour
         int width, height, x, y;
         VPGetFrameSize(player, out width, out height, out x, out y);
         sourceRect = new Rect(x, y, width, height);
+    }
+
+    [MonoPInvokeCallback(typeof(StatusCallback))]
+    static void OnStatusCallback(IntPtr userData, State newState)
+    {
+        GCHandle handle = GCHandle.FromIntPtr(userData);
+        VideoPlayer player = (VideoPlayer)handle.Target;
+        if (player.OnStateChanged != null)
+        {
+            player.OnStateChanged(newState);
+        }
     }
 
     [MonoPInvokeCallback(typeof(CreateTextureCallback))]
