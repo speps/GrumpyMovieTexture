@@ -30,6 +30,7 @@ public class VideoPlayer : MonoBehaviour
     public event StateChangedCallback OnStateChanged;
 
     private delegate void StatusCallback(IntPtr userData, State newState);
+    private delegate void TimeCallback(IntPtr userData, out double time);
     private delegate bool DataCallback(IntPtr userData, IntPtr data, int bytesMax, out int bytesRead);
     private delegate IntPtr CreateTextureCallback(IntPtr userData, int index, int width, int height);
     private delegate void UploadTextureCallback(IntPtr userData, int index, IntPtr data, int size);
@@ -41,7 +42,7 @@ public class VideoPlayer : MonoBehaviour
 #endif
 
     [DllImport(DLLName)]
-    private static extern IntPtr VPCreate(IntPtr userData, StatusCallback statusCallback);
+    private static extern IntPtr VPCreate(IntPtr userData, StatusCallback statusCallback, TimeCallback timeCallback);
 
     [DllImport(DLLName)]
     private static extern void VPDestroy(IntPtr player);
@@ -70,10 +71,11 @@ public class VideoPlayer : MonoBehaviour
     [DllImport(DLLName)]
     private static extern void VPGetFrameSize(IntPtr player, out int width, out int height, out int x, out int y);
 
-#if UNITY_IOS
-    [DllImport ("__Internal")]
-    private static extern void AudioSessionSetup();
-#endif
+    [DllImport(DLLName)]
+    private static extern void VPGetAudioInfo(IntPtr player, out int channels, out int frequency);
+
+    [DllImport(DLLName)]
+    private static extern void VPPCMRead(IntPtr player, float[] data, int numSamples);
 
     public string streamingAssetsFileName;
     public RenderTexture renderTexture;
@@ -83,11 +85,12 @@ public class VideoPlayer : MonoBehaviour
     Material material;
     Rect sourceRect;
     Texture2D[] textures = new Texture2D[3];
+    AudioConfiguration currentAudioConfiguration, newAudioConfiguration;
 
     void OnEnable()
     {
         handle = GCHandle.Alloc(this);
-        player = VPCreate(GCHandle.ToIntPtr(handle), OnStatusCallback);
+        player = VPCreate(GCHandle.ToIntPtr(handle), OnStatusCallback, OnTimeCallback);
         var shader = Shader.Find("Hidden/GrumpyConvertRGB");
         material = new Material(shader);
 
@@ -108,6 +111,12 @@ public class VideoPlayer : MonoBehaviour
         int width, height, x, y;
         VPGetFrameSize(player, out width, out height, out x, out y);
         sourceRect = new Rect(x, y, width, height);
+        int channels, frequency;
+        VPGetAudioInfo(player, out channels, out frequency);
+        currentAudioConfiguration = AudioSettings.GetConfiguration();
+        newAudioConfiguration = currentAudioConfiguration;
+        newAudioConfiguration.sampleRate = frequency;
+        newAudioConfiguration.speakerMode = channels == 2 ? AudioSpeakerMode.Stereo : AudioSpeakerMode.Mono;
     }
 
     [MonoPInvokeCallback(typeof(StatusCallback))]
@@ -119,6 +128,12 @@ public class VideoPlayer : MonoBehaviour
         {
             player.OnStateChanged(newState);
         }
+    }
+
+    [MonoPInvokeCallback(typeof(TimeCallback))]
+    static void OnTimeCallback(IntPtr userData, out double time)
+    {
+        time = AudioSettings.dspTime;
     }
 
     [MonoPInvokeCallback(typeof(CreateTextureCallback))]
@@ -163,12 +178,18 @@ public class VideoPlayer : MonoBehaviour
         {
             OpenResource();
         }
-#if UNITY_IOS
-        if (Application.platform == RuntimePlatform.IPhonePlayer)
+        if (!AudioSettings.Reset(newAudioConfiguration))
         {
-            AudioSessionSetup();
+            Debug.LogError("Problem setting audio settings");
         }
-#endif
+        else
+        {
+            var audioSource = GetComponent<AudioSource>();
+            if (audioSource != null)
+            {
+                audioSource.Play();
+            }
+        }
         VPPlay(player);
     }
 
@@ -180,5 +201,19 @@ public class VideoPlayer : MonoBehaviour
     public void Stop()
     {
         VPStop(player);
+        var audioSource = GetComponent<AudioSource>();
+        if (audioSource != null)
+        {
+            audioSource.Stop();
+        }
+        AudioSettings.Reset(currentAudioConfiguration);
+    }
+
+    void OnAudioFilterRead(float[] data, int channels)
+    {
+        //if (IsPlaying)
+        {
+            VPPCMRead(player, data, data.Length / channels);
+        }
     }
 }

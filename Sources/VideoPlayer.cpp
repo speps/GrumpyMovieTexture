@@ -4,10 +4,10 @@
 #include <string.h>
 #include <assert.h>
 
-VideoPlayer::VideoPlayer(void* userData, VideoStatusCallback statusCallback)
+VideoPlayer::VideoPlayer(void* userData, VideoStatusCallback statusCallback, VideoTimeCallback timeCallback)
     : _userData(userData), _state(VideoPlayerState::Initialized), _fileStream(nullptr)
-    , _timer(0.0), _timeLastFrame(0.0), _audioTotalSamples(0), _videoTime(0.0)
-    , _statusCallback(statusCallback), _dataCallback(nullptr)
+    , _timer(0.0), _timerStart(0.0), _timeLastFrame(0.0), _audioTotalSamples(0), _videoTime(0.0)
+    , _statusCallback(statusCallback), _timeCallback(timeCallback), _dataCallback(nullptr)
     , _createTextureCallback(nullptr) , _uploadTextureCallback(nullptr)
     , _processVideo(false)
 {
@@ -190,35 +190,12 @@ bool VideoPlayer::readHeaders()
     return _oggState.hasTheora || _oggState.hasVorbis;
 }
 
-int VideoPlayer::RtCallback(void *outputBuffer, void *inputBuffer, unsigned int nFrames, double streamTime, RtAudioStreamStatus status, void *userData)
-{
-    VideoPlayer* p = (VideoPlayer*)userData;
-    p->pcmRead((float*)outputBuffer, nFrames);
-    return 0;
-}
-
 void VideoPlayer::initAudio()
 {
-    RtAudio::StreamParameters outputParams;
-    outputParams.deviceId = _rtAudio.getDefaultOutputDevice();
-    outputParams.nChannels = _oggState.vorbisInfo.channels;
-    if (_rtAudio.getDeviceCount() > 0)
-    {
-        unsigned int bufferFrames = VIDEO_PLAYER_AUDIO_BUFFER_SIZE;
-        _rtAudio.openStream(&outputParams, nullptr, RTAUDIO_FLOAT32, _oggState.vorbisInfo.rate, &bufferFrames, RtCallback, this);
-    }
 }
 
 void VideoPlayer::shutAudio()
 {
-    if (_rtAudio.isStreamRunning())
-    {
-        _rtAudio.stopStream();
-    }
-    if (_rtAudio.isStreamOpen())
-    {
-        _rtAudio.closeStream();
-    }
 }
 
 void VideoPlayer::pushAudioFrame()
@@ -360,17 +337,15 @@ void VideoPlayer::getFrameSize(int& width, int& height, int& x, int& y)
     }
 }
 
-void VideoPlayer::getAudioInfo(int& numSamples, int& channels, int& frequency)
+void VideoPlayer::getAudioInfo(int& channels, int& frequency)
 {
     if (_state == VideoPlayerState::Initialized)
     {
-        numSamples = 0;
         channels = 0;
         frequency = 0;
     }
     else
     {
-        numSamples = _oggState.vorbisInfo.rate / 10;
         channels = _oggState.vorbisInfo.channels;
         frequency = _oggState.vorbisInfo.rate;
     }
@@ -398,8 +373,6 @@ void VideoPlayer::pcmRead(float* data, int numSamples)
         const int samplesToWrite = samplesLeftToWrite < samplesLeftToRead ? samplesLeftToWrite : samplesLeftToRead;
         for(int i = 0; i < samplesToWrite; i++)
         {
-            /*output[i * 2 + 0] = (int16_t)(inputL[i] * 32767.0f);
-            output[i * 2 + 1] = (int16_t)(inputR[i] * 32767.0f);*/
             output[i * 2 + 0] = inputL[i];
             output[i * 2 + 1] = inputR[i];
         }
@@ -423,6 +396,7 @@ void VideoPlayer::threadDecode(VideoPlayer* p)
     ogg_int64_t videoGranule = 0;
 
     p->_timer = 0;
+    p->_timerStart = 0;
     p->_timeLastFrame = 0;
 
     p->_videoFrames.clear();
@@ -513,9 +487,9 @@ void VideoPlayer::threadDecode(VideoPlayer* p)
         if (!streaming && (!p->_oggState.hasVorbis || audioReady) && (!p->_oggState.hasTheora || videoReady))
         {
             streaming = true;
-            if (p->_rtAudio.isStreamOpen())
+            if (p->_timeCallback != nullptr)
             {
-                p->_rtAudio.startStream();
+                p->_timeCallback(p->_userData, &p->_timerStart);
             }
             p->_timer = 0.0;
         }
@@ -669,9 +643,11 @@ void VideoPlayer::update(float timeStep)
 {
     if (_state == VideoPlayerState::Playing)
     {
-        if (_rtAudio.isStreamRunning())
+        if (_timeCallback != nullptr)
         {
-            _timer = _rtAudio.getStreamTime();
+            double timerCurrent = 0;
+            _timeCallback(_userData, &timerCurrent);
+            _timer = timerCurrent - _timerStart;
         }
         _timer += timeStep;
     }

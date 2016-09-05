@@ -8,9 +8,9 @@
 #define UNITY_INTERFACE_EXPORT
 #endif
 
-extern "C" UNITY_INTERFACE_EXPORT void* VPCreate(void* userData, VideoStatusCallback statusCallback)
+extern "C" UNITY_INTERFACE_EXPORT void* VPCreate(void* userData, VideoStatusCallback statusCallback, VideoTimeCallback timeCallback)
 {
-    return new VideoPlayer(userData, statusCallback);
+    return new VideoPlayer(userData, statusCallback, timeCallback);
 }
 
 extern "C" UNITY_INTERFACE_EXPORT void VPDestroy(VideoPlayer* player)
@@ -58,7 +58,12 @@ extern "C" UNITY_INTERFACE_EXPORT void VPGetFrameSize(VideoPlayer* player, int& 
     player->getFrameSize(width, height, x, y);
 }
 
-extern "C" UNITY_INTERFACE_EXPORT void VPGetAudioInfo(VideoPlayer* player, int& numSamples, int& channels, int& frequency)
+extern "C" UNITY_INTERFACE_EXPORT void VPGetAudioInfo(VideoPlayer* player, int& channels, int& frequency)
 {
-    player->getAudioInfo(numSamples, channels, frequency);
+    player->getAudioInfo(channels, frequency);
+}
+
+extern "C" UNITY_INTERFACE_EXPORT void VPPCMRead(VideoPlayer* player, float* data, int numSamples)
+{
+    player->pcmRead(data, numSamples);
 }

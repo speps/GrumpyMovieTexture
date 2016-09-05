@@ -39,6 +39,7 @@ enum class VideoPlayerState
 };
 
 typedef void (*VideoStatusCallback)(void* userData, VideoPlayerState newState);
+typedef void (*VideoTimeCallback)(void* userData, double* time);
 typedef bool (*VideoDataCallback)(void* userData, uint8_t* outData, uint32_t bytesMax, uint32_t* bytesRead);
 typedef void* (*VideoCreateTextureCallback)(void* userData, int index, int width, int height);
 typedef void (*VideoUploadTextureCallback)(void* userData, int index, uint8_t* data, int size);
@@ -50,6 +51,7 @@ private:
     VideoPlayerState _state;
     FILE* _fileStream;
     VideoStatusCallback _statusCallback;
+    VideoTimeCallback _timeCallback;
     VideoDataCallback _dataCallback;
     VideoCreateTextureCallback _createTextureCallback;
     VideoUploadTextureCallback _uploadTextureCallback;
@@ -57,7 +59,7 @@ private:
     std::condition_variable _pauseEvent;
     std::atomic<bool> _processVideo;
 
-    double _timer, _timeLastFrame;
+    double _timer, _timerStart, _timeLastFrame;
     void* _bufferTextures[3];
 
     struct VideoBuffer
@@ -98,9 +100,6 @@ private:
 
     std::mutex _audioMutex;
     int _audioTotalSamples;
-
-    RtAudio _rtAudio;
-    static int RtCallback(void *outputBuffer, void *inputBuffer, unsigned int nFrames, double streamTime, RtAudioStreamStatus status, void *userData);
 
     struct OggState
     {
@@ -164,7 +163,7 @@ private:
     void cancelPause();
     bool waitPause();
 public:
-    VideoPlayer(void* userData, VideoStatusCallback statusCallback);
+    VideoPlayer(void* userData, VideoStatusCallback statusCallback, VideoTimeCallback timeCallback);
     virtual ~VideoPlayer();
 
     VideoPlayerState state() const
@@ -196,6 +195,6 @@ public:
     void processVideo();
 
     void getFrameSize(int& width, int& height, int& x, int& y);
-    void getAudioInfo(int& numSamples, int& channels, int& frequency);
+    void getAudioInfo(int& channels, int& frequency);
     void pcmRead(float* data, int numSamples);
 };
