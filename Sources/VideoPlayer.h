@@ -14,7 +14,6 @@
 #include <ogg/ogg.h>
 #include <theora/theoradec.h>
 #include <vorbis/codec.h>
-#include <RtAudio.h>
 
 #define VIDEO_PLAYER_OGG_BUFFER_SIZE 4096
 #define VIDEO_PLAYER_AUDIO_BUFFER_SIZE 4096
