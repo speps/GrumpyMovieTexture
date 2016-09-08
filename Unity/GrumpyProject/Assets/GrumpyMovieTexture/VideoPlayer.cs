@@ -104,10 +104,16 @@ public class VideoPlayer : MonoBehaviour
         handle.Free();
     }
 
+    public void Open(string fileName)
+    {
+        streamingAssetsFileName = fileName;
+        OpenResource();
+    }
+
     void OpenResource()
     {
         var filePath = Path.Combine(Application.streamingAssetsPath, streamingAssetsFileName);
-        VPOpenFile(player, filePath, OnCreateTextureCallback, OnUploadTextureCallback);
+        bool result = VPOpenFile(player, filePath, OnCreateTextureCallback, OnUploadTextureCallback);
         int width, height, x, y;
         VPGetFrameSize(player, out width, out height, out x, out y);
         sourceRect = new Rect(x, y, width, height);
@@ -154,9 +160,9 @@ public class VideoPlayer : MonoBehaviour
         player.textures[index].Apply();
     }
 
-    void FixedUpdate()
+    void Update()
     {
-        VPUpdate(player, Time.fixedDeltaTime);
+        VPUpdate(player, Time.unscaledDeltaTime);
         if (textures[0] != null)
         {
             RenderTexture.active = renderTexture;

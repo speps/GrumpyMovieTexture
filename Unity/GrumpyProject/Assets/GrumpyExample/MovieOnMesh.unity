@@ -117,7 +117,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 071ba900753ef4f4eb774017d13e29fd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  streamingAssetsFileName: av_sync_test.ogv
+  streamingAssetsFileName: big_buck_bunny_720p_stereo.ogv
   renderTexture: {fileID: 8400000, guid: 1665c54e063c33d4cae14e126b770b67, type: 2}
 --- !u!23 &87285415
 MeshRenderer:
@@ -187,6 +187,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ecf1a280ac77a394fa938fcbd8a7f93e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  selected: 0
 --- !u!82 &87285420
 AudioSource:
   m_ObjectHideFlags: 0
