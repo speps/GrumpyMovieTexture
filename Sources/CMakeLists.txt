@@ -45,13 +45,6 @@ set(LIBVORBIS_SOURCES
 )
 prefix_path(LIBVORBIS_SOURCES "${PROJECT_SOURCE_DIR}/External/${LIBVORBIS_VERSION}/lib")
 
-set(RTAUDIO_VERSION rtaudio-4.1.2)
-set(RTAUDIO_SOURCES
-	RtAudio.h
-	RtAudio.cpp
-)
-prefix_path(RTAUDIO_SOURCES "${PROJECT_SOURCE_DIR}/External/${RTAUDIO_VERSION}")
-
 set(GMT_SOURCES
 	VideoPlayer.cpp
 	VideoPlayer.h
@@ -59,7 +52,6 @@ set(GMT_SOURCES
 	${LIBOGG_SOURCES}
 	${LIBTHEORA_SOURCES}
 	${LIBVORBIS_SOURCES}
-	${RTAUDIO_SOURCES}
 )
 
 if(IOS)
@@ -72,24 +64,9 @@ else()
 	add_library(GrumpyMovieTexture SHARED ${GMT_SOURCES})
 endif()
 
-# RtAudio
-if(WIN32)
-	list(APPEND GMT_LIBS winmm ole32 dsound)
-	add_definitions(-D__WINDOWS_DS__)
-	message(STATUS "Using Windows DirectSound")
-endif()
-if(APPLE)
-	find_library(AUDIOTOOLBOX_LIB AudioToolbox)
-	list(APPEND GMT_LIBS ${AUDIOTOOLBOX_LIB})
-	add_definitions(-D__MACOSX_AQ__)
-	message(STATUS "Using OSX Audio Queues")
-endif()
-
 target_include_directories(GrumpyMovieTexture PRIVATE
 	${PROJECT_SOURCE_DIR}/External/${LIBOGG_VERSION}/include
 	${PROJECT_SOURCE_DIR}/External/${LIBTHEORA_VERSION}/include
 	${PROJECT_SOURCE_DIR}/External/${LIBVORBIS_VERSION}/include
-	${PROJECT_SOURCE_DIR}/External/${RTAUDIO_VERSION}
-	${PROJECT_SOURCE_DIR}/External/${RTAUDIO_VERSION}/include
 )
 target_link_libraries(GrumpyMovieTexture ${GMT_LIBS})

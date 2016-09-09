@@ -236,7 +236,7 @@ void VideoPlayer::shutVideo()
 void VideoPlayer::pushVideoFrame()
 {
     // Skip frames that won't be shown anyway
-    if (_videoTime < _timer || _videoTime < _timeLastFrame)
+    if (_videoTime < _timeLastFrame)
     {
         return;
     }
@@ -649,7 +649,10 @@ void VideoPlayer::update(float timeStep)
             _timeCallback(_userData, &timerCurrent);
             _timer = timerCurrent - _timerStart;
         }
-        _timer += timeStep;
+        else
+        {
+            _timer += timeStep;
+        }
     }
     processVideo();
 }
