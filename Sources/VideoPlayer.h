@@ -22,7 +22,7 @@
 #define FREE free
 #if WIN32
 #include <windows.h>
-#define LOG(...) { char tmp[256]; sprintf_s(tmp, sizeof(tmp), __VA_ARGS__); OutputDebugStringA(tmp); }
+#define LOG(...) { char tmp[1024]; sprintf_s(tmp, sizeof(tmp), __VA_ARGS__); OutputDebugStringA(tmp); }
 #else
 #define LOG(...)
 #endif

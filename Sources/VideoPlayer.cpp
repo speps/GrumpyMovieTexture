@@ -464,9 +464,9 @@ void VideoPlayer::threadDecode(VideoPlayer* p)
             }
         }
 
-        if (endOfFile && !audioReady && !videoReady)
+        const bool flushed = p->_audioTotalSamples == 0 && p->_videoFrames.empty();
+        if (endOfFile && !audioReady && !videoReady && flushed)
         {
-            p->setState(VideoPlayerState::Stopped);
             break;
         }
 
@@ -643,6 +643,7 @@ void VideoPlayer::update(float timeStep)
 {
     if (_state == VideoPlayerState::Playing)
     {
+        std::unique_lock<std::mutex> lock(_videoMutex);
         if (_timeCallback != nullptr)
         {
             double timerCurrent = 0;
