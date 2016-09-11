@@ -4,12 +4,11 @@
 #include <string.h>
 #include <assert.h>
 
-VideoPlayer::VideoPlayer(void* userData, VideoStatusCallback statusCallback, VideoTimeCallback timeCallback)
+VideoPlayer::VideoPlayer(void* userData, VideoStatusCallback statusCallback, VideoGetValueCallback getValueCallback)
     : _userData(userData), _state(VideoPlayerState::Initialized), _fileStream(nullptr)
-    , _timer(0.0), _timerStart(0.0), _timeLastFrame(0.0), _audioTotalSamples(0), _videoTime(0.0)
-    , _statusCallback(statusCallback), _timeCallback(timeCallback), _dataCallback(nullptr)
-    , _createTextureCallback(nullptr) , _uploadTextureCallback(nullptr)
-    , _processVideo(false)
+    , _timer(0.0), _timerStart(0.0), _timeLastFrame(0.0), _audioBufferSize(VIDEO_PLAYER_AUDIO_BUFFER_SIZE)
+    , _audioTotalSamples(0), _videoTime(0.0), _statusCallback(statusCallback), _getValueCallback(getValueCallback)
+    , _dataCallback(nullptr), _createTextureCallback(nullptr) , _uploadTextureCallback(nullptr), _processVideo(false)
 {
 }
 
@@ -404,6 +403,13 @@ void VideoPlayer::threadDecode(VideoPlayer* p)
     p->_processVideo = false;
 
     p->_audioFrames.clear();
+    {
+        int32_t audioBufferSize = p->_audioBufferSize;
+        if (p->_getValueCallback(p->_userData, VideoPlayerValueType::AudioBufferSize, &audioBufferSize))
+        {
+            p->_audioBufferSize = audioBufferSize;
+        }
+    }
     p->_audioTotalSamples = 0;
 
     bool streaming = false;
@@ -424,7 +430,7 @@ void VideoPlayer::threadDecode(VideoPlayer* p)
         }
 
         // Decode audio
-        while (p->_oggState.hasVorbis && !audioReady && p->_audioTotalSamples < VIDEO_PLAYER_AUDIO_BUFFER_SIZE)
+        while (p->_oggState.hasVorbis && !audioReady && p->_audioTotalSamples < p->_audioBufferSize)
         {
             int result = ogg_stream_packetout(&p->_oggState.vorbisStreamState, &packet);
             if (result > 0)
@@ -470,7 +476,7 @@ void VideoPlayer::threadDecode(VideoPlayer* p)
             break;
         }
 
-        if ((p->_oggState.hasVorbis && !audioReady && p->_audioTotalSamples < VIDEO_PLAYER_AUDIO_BUFFER_SIZE)
+        if ((p->_oggState.hasVorbis && !audioReady && p->_audioTotalSamples < p->_audioBufferSize)
             || (p->_oggState.hasTheora && !videoReady && p->_videoFrames.size() < VIDEO_PLAYER_VIDEO_BUFFERED_FRAMES))
         {
             bool success = p->readStream();
@@ -487,9 +493,13 @@ void VideoPlayer::threadDecode(VideoPlayer* p)
         if (!streaming && (!p->_oggState.hasVorbis || audioReady) && (!p->_oggState.hasTheora || videoReady))
         {
             streaming = true;
-            if (p->_timeCallback != nullptr)
+            if (p->_getValueCallback != nullptr)
             {
-                p->_timeCallback(p->_userData, &p->_timerStart);
+                double timerCurrent = 0;
+                if (p->_getValueCallback(p->_userData, VideoPlayerValueType::AudioTime, &timerCurrent))
+                {
+                    p->_timerStart = timerCurrent;
+                }
             }
             p->_timer = 0.0;
         }
@@ -644,11 +654,17 @@ void VideoPlayer::update(float timeStep)
     if (_state == VideoPlayerState::Playing)
     {
         std::unique_lock<std::mutex> lock(_videoMutex);
-        if (_timeCallback != nullptr)
+        if (_getValueCallback != nullptr)
         {
             double timerCurrent = 0;
-            _timeCallback(_userData, &timerCurrent);
-            _timer = timerCurrent - _timerStart;
+            if (_getValueCallback(_userData, VideoPlayerValueType::AudioTime, &timerCurrent))
+            {
+                _timer = timerCurrent - _timerStart;
+            }
+            else
+            {
+                _timer += timeStep;
+            }
         }
         else
         {

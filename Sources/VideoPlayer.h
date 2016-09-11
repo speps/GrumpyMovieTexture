@@ -37,8 +37,15 @@ enum class VideoPlayerState
     Stopped
 };
 
+enum class VideoPlayerValueType
+{
+    None,
+    AudioTime, // double
+    AudioBufferSize // int32
+};
+
 typedef void (*VideoStatusCallback)(void* userData, VideoPlayerState newState);
-typedef void (*VideoTimeCallback)(void* userData, double* time);
+typedef bool (*VideoGetValueCallback)(void* userData, VideoPlayerValueType type, void* value);
 typedef bool (*VideoDataCallback)(void* userData, uint8_t* outData, uint32_t bytesMax, uint32_t* bytesRead);
 typedef void* (*VideoCreateTextureCallback)(void* userData, int index, int width, int height);
 typedef void (*VideoUploadTextureCallback)(void* userData, int index, uint8_t* data, int size);
@@ -50,7 +57,7 @@ private:
     VideoPlayerState _state;
     FILE* _fileStream;
     VideoStatusCallback _statusCallback;
-    VideoTimeCallback _timeCallback;
+    VideoGetValueCallback _getValueCallback;
     VideoDataCallback _dataCallback;
     VideoCreateTextureCallback _createTextureCallback;
     VideoUploadTextureCallback _uploadTextureCallback;
@@ -98,7 +105,7 @@ private:
     AudioFrames _audioFrames;
 
     std::mutex _audioMutex;
-    int _audioTotalSamples;
+    int _audioBufferSize, _audioTotalSamples;
 
     struct OggState
     {
@@ -162,7 +169,7 @@ private:
     void cancelPause();
     bool waitPause();
 public:
-    VideoPlayer(void* userData, VideoStatusCallback statusCallback, VideoTimeCallback timeCallback);
+    VideoPlayer(void* userData, VideoStatusCallback statusCallback, VideoGetValueCallback getValueCallback);
     virtual ~VideoPlayer();
 
     VideoPlayerState state() const

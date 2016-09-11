@@ -26,11 +26,18 @@ public class VideoPlayer : MonoBehaviour
         Stopped
     }
 
+    public enum ValueType
+    {
+        None,
+        AudioTime, // double
+        AudioBufferSize, // int32
+    }
+
     public delegate void StateChangedCallback(State newState);
     public event StateChangedCallback OnStateChanged;
 
     private delegate void StatusCallback(IntPtr userData, State newState);
-    private delegate void TimeCallback(IntPtr userData, out double time);
+    private delegate bool GetValueCallback(IntPtr userData, ValueType type, IntPtr value);
     private delegate bool DataCallback(IntPtr userData, IntPtr data, int bytesMax, out int bytesRead);
     private delegate IntPtr CreateTextureCallback(IntPtr userData, int index, int width, int height);
     private delegate void UploadTextureCallback(IntPtr userData, int index, IntPtr data, int size);
@@ -42,7 +49,7 @@ public class VideoPlayer : MonoBehaviour
 #endif
 
     [DllImport(DLLName)]
-    private static extern IntPtr VPCreate(IntPtr userData, StatusCallback statusCallback, TimeCallback timeCallback);
+    private static extern IntPtr VPCreate(IntPtr userData, StatusCallback statusCallback, GetValueCallback getValueCallback);
 
     [DllImport(DLLName)]
     private static extern void VPDestroy(IntPtr player);
@@ -90,7 +97,7 @@ public class VideoPlayer : MonoBehaviour
     void OnEnable()
     {
         handle = GCHandle.Alloc(this);
-        player = VPCreate(GCHandle.ToIntPtr(handle), OnStatusCallback, OnTimeCallback);
+        player = VPCreate(GCHandle.ToIntPtr(handle), OnStatusCallback, OnGetValueCallback);
         var shader = Shader.Find("Hidden/GrumpyConvertRGB");
         material = new Material(shader);
 
@@ -114,6 +121,11 @@ public class VideoPlayer : MonoBehaviour
     {
         var filePath = Path.Combine(Application.streamingAssetsPath, streamingAssetsFileName);
         bool result = VPOpenFile(player, filePath, OnCreateTextureCallback, OnUploadTextureCallback);
+        if (!result)
+        {
+            Debug.LogErrorFormat("Failed to open '{0}'", filePath);
+            return;
+        }
         int width, height, x, y;
         VPGetFrameSize(player, out width, out height, out x, out y);
         sourceRect = new Rect(x, y, width, height);
@@ -136,10 +148,22 @@ public class VideoPlayer : MonoBehaviour
         }
     }
 
-    [MonoPInvokeCallback(typeof(TimeCallback))]
-    static void OnTimeCallback(IntPtr userData, out double time)
+    [MonoPInvokeCallback(typeof(GetValueCallback))]
+    static bool OnGetValueCallback(IntPtr userData, ValueType type, IntPtr value)
     {
-        time = AudioSettings.dspTime;
+        if (type == ValueType.AudioTime)
+        {
+            Marshal.StructureToPtr(AudioSettings.dspTime, value, false);
+            return true;
+        }
+        else if (type == ValueType.AudioBufferSize)
+        {
+            GCHandle handle = GCHandle.FromIntPtr(userData);
+            VideoPlayer player = (VideoPlayer)handle.Target;
+            Marshal.StructureToPtr(player.newAudioConfiguration.dspBufferSize, value, false);
+            return true;
+        }
+        return false;
     }
 
     [MonoPInvokeCallback(typeof(CreateTextureCallback))]
@@ -163,19 +187,32 @@ public class VideoPlayer : MonoBehaviour
     void Update()
     {
         VPUpdate(player, Time.unscaledDeltaTime);
+
+        RenderTexture.active = renderTexture;
+        GL.PushMatrix();
+        GL.LoadPixelMatrix(0, renderTexture.width, renderTexture.height, 0);
+        GL.Clear(false, true, Color.black);
         if (textures[0] != null)
         {
-            RenderTexture.active = renderTexture;
-            GL.PushMatrix();
-            GL.LoadPixelMatrix(0, renderTexture.width, renderTexture.height, 0);
             material.SetTexture("_MainCbTex", textures[1]);
             material.SetTexture("_MainCrTex", textures[2]);
             var sourceSize = new Vector2(textures[0].width, textures[0].height);
-            Graphics.DrawTexture(new Rect(0, 0, renderTexture.width, renderTexture.height), textures[0],
-                new Rect(sourceRect.x / sourceSize.x, sourceRect.y / sourceSize.y, sourceRect.width / sourceSize.x, sourceRect.height / sourceSize.y), 0, 0, 0, 0, material);
-            GL.PopMatrix();
-            RenderTexture.active = null;
+            Graphics.DrawTexture(
+                new Rect(
+                    0,
+                    0,
+                    renderTexture.width,
+                    renderTexture.height),
+                textures[0],
+                new Rect(
+                    sourceRect.x / sourceSize.x,
+                    sourceRect.y / sourceSize.y,
+                    sourceRect.width / sourceSize.x,
+                    sourceRect.height / sourceSize.y),
+                    0, 0, 0, 0, material);
         }
+        GL.PopMatrix();
+        RenderTexture.active = null;
     }
 
     public void Play()
