@@ -7,8 +7,9 @@ branches:
 language:
   - cpp
 
-os:
-  - osx
+matrix:
+    - os: osx
+      osx_image: beta-xcode6.1
 
 # Install packages differs for container-based infrastructure
 # * https://docs.travis-ci.com/user/migrating-from-legacy/#How-do-I-install-APT-sources-and-packages%3F
@@ -32,7 +33,7 @@ addons:
 
 env:
   - TOOLCHAIN=osx-10-9 CONFIG=Release ARTIFACT=.bintray.osx.json ARCHS="i386;x86_64"
-  - TOOLCHAIN=ios-nocodesign CONFIG=Release EXTRA="--ios-multiarch" ARTIFACT=.bintray.ios.json
+  - TOOLCHAIN=ios-nocodesign CONFIG=Release EXTRA="--ios-multiarch" ARTIFACT=.bintray.ios8.json
   - TOOLCHAIN=android-ndk-r10e-api-21-armeabi-v7a CONFIG=Release ARTIFACT=.bintray.ndk.armv7a.json
 
 install:
