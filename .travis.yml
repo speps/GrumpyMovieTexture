@@ -10,8 +10,6 @@ language:
 os:
   - osx
 
-osx_image: xcode7.2
-
 # Install packages differs for container-based infrastructure
 # * https://docs.travis-ci.com/user/migrating-from-legacy/#How-do-I-install-APT-sources-and-packages%3F
 # * http://stackoverflow.com/a/30925448/2288008
@@ -33,8 +31,8 @@ addons:
       - g++-4.8
 
 env:
-  - TOOLCHAIN=osx-10-11 CONFIG=Release ARTIFACT=.bintray.osx.json ARCHS="i386;x86_64"
-  - TOOLCHAIN=ios-nocodesign-9-2 CONFIG=Release EXTRA="--ios-multiarch" ARTIFACT=.bintray.ios.json ENABLE_BITCODE=YES
+  - TOOLCHAIN=osx-10-9 CONFIG=Release ARTIFACT=.bintray.osx.json ARCHS="i386;x86_64"
+  - TOOLCHAIN=ios-nocodesign CONFIG=Release EXTRA="--ios-multiarch" ARTIFACT=.bintray.ios.json
   - TOOLCHAIN=android-ndk-r10e-api-21-armeabi-v7a CONFIG=Release ARTIFACT=.bintray.ndk.armv7a.json
 
 install:
