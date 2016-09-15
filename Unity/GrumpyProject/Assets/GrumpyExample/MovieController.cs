@@ -1,7 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections;
 
-[RequireComponent(typeof(VideoPlayer))]
 public class MovieController : MonoBehaviour
 {
     private static string[] videos = new string[]
@@ -14,6 +13,22 @@ public class MovieController : MonoBehaviour
     void OnGUI()
     {
         var player = GetComponent<VideoPlayer>();
+        if (GUILayout.Button(player == null ? "Create" : "Destroy"))
+        {
+            if (player == null)
+            {
+                player = gameObject.AddComponent<VideoPlayer>();
+            }
+            else
+            {
+                Destroy(player);
+                player = null;
+            }
+        }
+        if (player == null)
+        {
+            return;
+        }
         bool isPlaying = player.IsPlaying;
         for (int i = 0; i < videos.Length; i++)
         {

@@ -106,6 +106,10 @@ public class VideoPlayer : MonoBehaviour
 
     void OnDisable()
     {
+        if (IsPlaying)
+        {
+            Stop();
+        }
         VPDestroy(player);
         player = IntPtr.Zero;
         handle.Free();
@@ -119,6 +123,10 @@ public class VideoPlayer : MonoBehaviour
 
     void OpenResource()
     {
+        if (string.IsNullOrEmpty(streamingAssetsFileName))
+        {
+            return;
+        }
         var filePath = Path.Combine(Application.streamingAssetsPath, streamingAssetsFileName);
         bool result = VPOpenFile(player, filePath, OnCreateTextureCallback, OnUploadTextureCallback);
         if (!result)
@@ -188,31 +196,34 @@ public class VideoPlayer : MonoBehaviour
     {
         VPUpdate(player, Time.unscaledDeltaTime);
 
-        RenderTexture.active = renderTexture;
-        GL.PushMatrix();
-        GL.LoadPixelMatrix(0, renderTexture.width, renderTexture.height, 0);
-        GL.Clear(false, true, Color.black);
-        if (textures[0] != null)
+        if (renderTexture != null)
         {
-            material.SetTexture("_MainCbTex", textures[1]);
-            material.SetTexture("_MainCrTex", textures[2]);
-            var sourceSize = new Vector2(textures[0].width, textures[0].height);
-            Graphics.DrawTexture(
-                new Rect(
-                    0,
-                    0,
-                    renderTexture.width,
-                    renderTexture.height),
-                textures[0],
-                new Rect(
-                    sourceRect.x / sourceSize.x,
-                    sourceRect.y / sourceSize.y,
-                    sourceRect.width / sourceSize.x,
-                    sourceRect.height / sourceSize.y),
-                    0, 0, 0, 0, material);
+            RenderTexture.active = renderTexture;
+            GL.PushMatrix();
+            GL.LoadPixelMatrix(0, renderTexture.width, renderTexture.height, 0);
+            GL.Clear(false, true, Color.black);
+            if (textures[0] != null)
+            {
+                material.SetTexture("_MainCbTex", textures[1]);
+                material.SetTexture("_MainCrTex", textures[2]);
+                var sourceSize = new Vector2(textures[0].width, textures[0].height);
+                Graphics.DrawTexture(
+                    new Rect(
+                        0,
+                        0,
+                        renderTexture.width,
+                        renderTexture.height),
+                    textures[0],
+                    new Rect(
+                        sourceRect.x / sourceSize.x,
+                        sourceRect.y / sourceSize.y,
+                        sourceRect.width / sourceSize.x,
+                        sourceRect.height / sourceSize.y),
+                        0, 0, 0, 0, material);
+            }
+            GL.PopMatrix();
+            RenderTexture.active = null;
         }
-        GL.PopMatrix();
-        RenderTexture.active = null;
     }
 
     public void Play()
