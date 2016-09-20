@@ -196,7 +196,7 @@ public class VideoPlayer : MonoBehaviour
     {
         VPUpdate(player, Time.unscaledDeltaTime);
 
-        if (renderTexture != null)
+        if (renderTexture != null && IsPlaying)
         {
             RenderTexture.active = renderTexture;
             GL.PushMatrix();
