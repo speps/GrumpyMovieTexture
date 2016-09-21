@@ -93,6 +93,7 @@ public class VideoPlayer : MonoBehaviour
     Rect sourceRect;
     Texture2D[] textures = new Texture2D[3];
     AudioConfiguration currentAudioConfiguration, newAudioConfiguration;
+    bool isPlayingCached; // cached value as calling native methods doesn't work on all threads
 
     void OnEnable()
     {
@@ -195,6 +196,7 @@ public class VideoPlayer : MonoBehaviour
     void Update()
     {
         VPUpdate(player, Time.unscaledDeltaTime);
+        isPlayingCached = VPIsPlaying(player);
 
         if (renderTexture != null && IsPlaying)
         {
@@ -249,7 +251,7 @@ public class VideoPlayer : MonoBehaviour
 
     public bool IsPlaying
     {
-        get { return VPIsPlaying(player); }
+        get { return isPlayingCached; }
     }
 
     public void Stop()
@@ -265,7 +267,7 @@ public class VideoPlayer : MonoBehaviour
 
     void OnAudioFilterRead(float[] data, int channels)
     {
-        //if (IsPlaying)
+        if (IsPlaying)
         {
             VPPCMRead(player, data, data.Length / channels);
         }
