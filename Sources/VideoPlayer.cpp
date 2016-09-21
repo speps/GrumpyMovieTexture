@@ -20,10 +20,6 @@ VideoPlayer::~VideoPlayer()
 void VideoPlayer::destroy()
 {
     stop();
-    if (_fileStream != nullptr)
-    {
-        fclose(_fileStream);
-    }
     _statusCallback = nullptr;
     _dataCallback = nullptr;
     _createTextureCallback = nullptr;
@@ -353,8 +349,9 @@ void VideoPlayer::getAudioInfo(int& channels, int& frequency)
 void VideoPlayer::pcmRead(float* data, int numSamples)
 {
     std::unique_lock<std::mutex> lock(_audioMutex);
-    if (numSamples > _audioTotalSamples)
+    if (_audioFrames.empty())
     {
+        assert(_audioTotalSamples == 0);
         memset(data, 0, sizeof(float) * numSamples);
         return;
     }
@@ -381,6 +378,14 @@ void VideoPlayer::pcmRead(float* data, int numSamples)
             _audioFrames.pop_front();
         }
         samplesWritten += samplesToWrite;
+        if (_audioFrames.empty())
+        {
+            break;
+        }
+    }
+    if (samplesWritten < numSamples)
+    {
+        memset(&data[samplesWritten * 2], 0, sizeof(float) * (numSamples - samplesWritten));
     }
     _audioTotalSamples -= samplesWritten;
 }
@@ -473,6 +478,7 @@ void VideoPlayer::threadDecode(VideoPlayer* p)
         const bool flushed = p->_audioTotalSamples == 0 && p->_videoFrames.empty();
         if (endOfFile && !audioReady && !videoReady && flushed)
         {
+            p->setState(VideoPlayerState::Stopped);
             break;
         }
 
@@ -555,8 +561,6 @@ bool VideoPlayer::waitPause()
 
 bool VideoPlayer::open()
 {
-    stop();
-
     if (!readHeaders())
     {
         setState(VideoPlayerState::Stopped);
@@ -569,6 +573,8 @@ bool VideoPlayer::open()
 
 bool VideoPlayer::openCallback(VideoDataCallback dataCallback, VideoCreateTextureCallback createTextureCallback, VideoUploadTextureCallback uploadTextureCallback)
 {
+    stop();
+
     if (dataCallback == nullptr || createTextureCallback == nullptr || uploadTextureCallback == nullptr)
     {
         return false;
@@ -583,6 +589,8 @@ bool VideoPlayer::openCallback(VideoDataCallback dataCallback, VideoCreateTextur
 
 bool VideoPlayer::openFile(std::string filePath, VideoCreateTextureCallback createTextureCallback, VideoUploadTextureCallback uploadTextureCallback)
 {
+    stop();
+
     if (filePath.empty())
     {
         return false;
@@ -639,14 +647,17 @@ void VideoPlayer::stop()
         _videoFrames.clear();
     }
 
-    if (!_threadDecode.joinable())
+    if (_threadDecode.joinable())
     {
-        return;
+        setState(VideoPlayerState::Stopped);
+        cancelPause();
+        waitDecode();
     }
 
-    setState(VideoPlayerState::Stopped);
-    cancelPause();
-    waitDecode();
+    if (_fileStream != nullptr)
+    {
+        fclose(_fileStream);
+    }
 }
 
 void VideoPlayer::update(float timeStep)
