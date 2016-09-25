@@ -56,9 +56,8 @@ set(GMT_SOURCES
 )
 
 if(IOS)
-    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-stdlib=libc++> -O3)
+    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-stdlib=libc++> -O3 -mfpu=neon -mfloat-abi=softfp)
     add_library(GrumpyMovieTexture STATIC ${GMT_SOURCES})
-    add_definitions(-DOC_NEON)
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     add_library(GrumpyMovieTexture MODULE ${GMT_SOURCES})
     set_target_properties(GrumpyMovieTexture PROPERTIES BUNDLE 1)
