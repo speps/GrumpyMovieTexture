@@ -27,6 +27,12 @@
  _fragis,_nfragis,_frag_buf_offs) \
   oc_frag_copy_list_neon(_dst_frame,_src_frame,_ystride, \
    _fragis,_nfragis,_frag_buf_offs)
+#   define oc_frag_recon_intra(_state,_dst,_ystride,_residue) \
+  oc_frag_recon_intra_neon(_dst,_ystride,_residue)
+#   define oc_frag_recon_inter(_state,_dst,_src,_ystride,_residue) \
+  oc_frag_recon_inter_neon(_dst,_src,_ystride,_residue)
+#   define oc_frag_recon_inter2(_state,_dst,_src1,_src2,_ystride,_residue) \
+  oc_frag_recon_inter2_neon(_dst,_src1,_src2,_ystride,_residue)
 #  define OC_STATE_USE_VTABLE (1)
 # endif
 
