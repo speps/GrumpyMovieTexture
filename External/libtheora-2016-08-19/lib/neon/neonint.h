@@ -33,6 +33,8 @@
   oc_frag_recon_inter_neon(_dst,_src,_ystride,_residue)
 #   define oc_frag_recon_inter2(_state,_dst,_src1,_src2,_ystride,_residue) \
   oc_frag_recon_inter2_neon(_dst,_src1,_src2,_ystride,_residue)
+#   define oc_idct8x8(_state,_y,_x,_last_zzi) \
+  oc_idct8x8_neon(_y,_x,_last_zzi)
 #  define OC_STATE_USE_VTABLE (1)
 # endif
 
@@ -46,5 +48,12 @@ void oc_frag_copy_neon(unsigned char *_dst,
 void oc_frag_copy_list_neon(unsigned char *_dst_frame,
  const unsigned char *_src_frame,int _ystride,
  const ptrdiff_t *_fragis,ptrdiff_t _nfragis,const ptrdiff_t *_frag_buf_offs);
+void oc_frag_recon_intra_neon(unsigned char *_dst,int _ystride,
+ const ogg_int16_t *_residue);
+void oc_frag_recon_inter_neon(unsigned char *_dst,const unsigned char *_src,
+ int _ystride,const ogg_int16_t *_residue);
+void oc_frag_recon_inter2_neon(unsigned char *_dst,const unsigned char *_src1,
+ const unsigned char *_src2,int _ystride,const ogg_int16_t *_residue);
+void oc_idct8x8_neon(ogg_int16_t _y[64],ogg_int16_t _x[64],int _last_zzi);
 
 #endif

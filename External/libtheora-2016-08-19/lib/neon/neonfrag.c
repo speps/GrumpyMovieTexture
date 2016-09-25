@@ -21,7 +21,7 @@
 void oc_frag_copy_neon(unsigned char *_dst,const unsigned char *_src,int _ystride){
   int i;
   for(i=8;i-->0;){
-    vst1_u8(_dst, vld1_u8(_src));
+    vst1_u8(_dst,vld1_u8(_src));
     _dst+=_ystride;
     _src+=_ystride;
   }
