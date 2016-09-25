@@ -18,14 +18,16 @@
 #include <arm_neon.h>
 #include "../internal.h"
 
-/*Performs an inverse 8 point Type-II DCT transform.
-  The output is scaled by a factor of 2 relative to the orthonormal version of
-   the transform.
-  _y: The buffer to store the result in.
-      Data will be placed in every 8th entry (e.g., in a column of an 8x8
-       block).
-  _x: The input coefficients.
-      The first 8 entries are used (e.g., from a row of an 8x8 block).*/
+// NOT DONE YET
+
+// #define OC_C1S7 ((ogg_int32_t)64277)
+// #define OC_C2S6 ((ogg_int32_t)60547)
+// #define OC_C3S5 ((ogg_int32_t)54491)
+// #define OC_C4S4 ((ogg_int32_t)46341)
+// #define OC_C5S3 ((ogg_int32_t)36410)
+// #define OC_C6S2 ((ogg_int32_t)25080)
+// #define OC_C7S1 ((ogg_int32_t)12785)
+
 static void idct8(ogg_int16_t *_y,const ogg_int16_t _x[8]){
   ogg_int32_t t[8];
   ogg_int32_t r;
@@ -79,15 +81,6 @@ static void idct8(ogg_int16_t *_y,const ogg_int16_t _x[8]){
   _y[7<<3]=(ogg_int16_t)(t[0]-t[7]);
 }
 
-/*Performs an inverse 8 point Type-II DCT transform.
-  The output is scaled by a factor of 2 relative to the orthonormal version of
-   the transform.
-  _y: The buffer to store the result in.
-      Data will be placed in every 8th entry (e.g., in a column of an 8x8
-       block).
-  _x: The input coefficients.
-      Only the first 4 entries are used.
-      The other 4 are assumed to be 0.*/
 static void idct8_4(ogg_int16_t *_y,const ogg_int16_t _x[8]){
   ogg_int32_t t[8];
   ogg_int32_t r;
@@ -126,15 +119,6 @@ static void idct8_4(ogg_int16_t *_y,const ogg_int16_t _x[8]){
   _y[7<<3]=(ogg_int16_t)(t[0]-t[7]);
 }
 
-/*Performs an inverse 8 point Type-II DCT transform.
-  The output is scaled by a factor of 2 relative to the orthonormal version of
-   the transform.
-  _y: The buffer to store the result in.
-      Data will be placed in every 8th entry (e.g., in a column of an 8x8
-       block).
-  _x: The input coefficients.
-      Only the first 3 entries are used.
-      The other 5 are assumed to be 0.*/
 static void idct8_3(ogg_int16_t *_y,const ogg_int16_t _x[8]){
   ogg_int32_t t[8];
   ogg_int32_t r;
@@ -167,15 +151,6 @@ static void idct8_3(ogg_int16_t *_y,const ogg_int16_t _x[8]){
   _y[7<<3]=(ogg_int16_t)(t[0]-t[7]);
 }
 
-/*Performs an inverse 8 point Type-II DCT transform.
-  The output is scaled by a factor of 2 relative to the orthonormal version of
-   the transform.
-  _y: The buffer to store the result in.
-      Data will be placed in every 8th entry (e.g., in a column of an 8x8
-       block).
-  _x: The input coefficients.
-      Only the first 2 entries are used.
-      The other 6 are assumed to be 0.*/
 static void idct8_2(ogg_int16_t *_y,const ogg_int16_t _x[8]){
   ogg_int32_t t[8];
   ogg_int32_t r;
@@ -201,35 +176,11 @@ static void idct8_2(ogg_int16_t *_y,const ogg_int16_t _x[8]){
   _y[7<<3]=(ogg_int16_t)(t[0]-t[7]);
 }
 
-/*Performs an inverse 8 point Type-II DCT transform.
-  The output is scaled by a factor of 2 relative to the orthonormal version of
-   the transform.
-  _y: The buffer to store the result in.
-      Data will be placed in every 8th entry (e.g., in a column of an 8x8
-       block).
-  _x: The input coefficients.
-      Only the first entry is used.
-      The other 7 are assumed to be 0.*/
 static void idct8_1(ogg_int16_t *_y,const ogg_int16_t _x[1]){
   _y[0<<3]=_y[1<<3]=_y[2<<3]=_y[3<<3]=
    _y[4<<3]=_y[5<<3]=_y[6<<3]=_y[7<<3]=(ogg_int16_t)(OC_C4S4*_x[0]>>16);
 }
 
-/*Performs an inverse 8x8 Type-II DCT transform.
-  The input is assumed to be scaled by a factor of 4 relative to orthonormal
-   version of the transform.
-  All coefficients but the first 3 in zig-zag scan order are assumed to be 0:
-   x  x  0  0  0  0  0  0
-   x  0  0  0  0  0  0  0
-   0  0  0  0  0  0  0  0
-   0  0  0  0  0  0  0  0
-   0  0  0  0  0  0  0  0
-   0  0  0  0  0  0  0  0
-   0  0  0  0  0  0  0  0
-   0  0  0  0  0  0  0  0
-  _y: The buffer to store the result in.
-      This may be the same as _x.
-  _x: The input coefficients.*/
 static void oc_idct8x8_3(ogg_int16_t _y[64],ogg_int16_t _x[64]){
   ogg_int16_t w[64];
   int         i;
@@ -244,21 +195,6 @@ static void oc_idct8x8_3(ogg_int16_t _y[64],ogg_int16_t _x[64]){
   _x[0]=_x[1]=_x[8]=0;
 }
 
-/*Performs an inverse 8x8 Type-II DCT transform.
-  The input is assumed to be scaled by a factor of 4 relative to orthonormal
-   version of the transform.
-  All coefficients but the first 10 in zig-zag scan order are assumed to be 0:
-   x  x  x  x  0  0  0  0
-   x  x  x  0  0  0  0  0
-   x  x  0  0  0  0  0  0
-   x  0  0  0  0  0  0  0
-   0  0  0  0  0  0  0  0
-   0  0  0  0  0  0  0  0
-   0  0  0  0  0  0  0  0
-   0  0  0  0  0  0  0  0
-  _y: The buffer to store the result in.
-      This may be the same as _x.
-  _x: The input coefficients.*/
 static void oc_idct8x8_10(ogg_int16_t _y[64],ogg_int16_t _x[64]){
   ogg_int16_t w[64];
   int         i;
@@ -275,12 +211,6 @@ static void oc_idct8x8_10(ogg_int16_t _y[64],ogg_int16_t _x[64]){
   _x[0]=_x[1]=_x[2]=_x[3]=_x[8]=_x[9]=_x[10]=_x[16]=_x[17]=_x[24]=0;
 }
 
-/*Performs an inverse 8x8 Type-II DCT transform.
-  The input is assumed to be scaled by a factor of 4 relative to orthonormal
-   version of the transform.
-  _y: The buffer to store the result in.
-      This may be the same as _x.
-  _x: The input coefficients.*/
 static void oc_idct8x8_slow(ogg_int16_t _y[64],ogg_int16_t _x[64]){
   ogg_int16_t w[64];
   int         i;
