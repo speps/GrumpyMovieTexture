@@ -17,6 +17,7 @@
 #include <string.h>
 #include <arm_neon.h>
 #include "../internal.h"
+#include "../dct.h"
 
 // NOT DONE YET
 
