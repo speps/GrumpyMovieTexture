@@ -412,7 +412,7 @@ void VideoPlayer::threadDecode(VideoPlayer* p)
         int32_t audioBufferSize = p->_audioBufferSize;
         if (p->_getValueCallback(p->_userData, VideoPlayerValueType::AudioBufferSize, &audioBufferSize))
         {
-            p->_audioBufferSize = audioBufferSize;
+            p->_audioBufferSize = audioBufferSize * VIDEO_PLAYER_AUDIO_BUFFERED_FRAMES;
         }
     }
     p->_audioTotalSamples = 0;
