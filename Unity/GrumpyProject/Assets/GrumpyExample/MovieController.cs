@@ -6,9 +6,10 @@ public class MovieController : MonoBehaviour
     private static string[] videos = new string[]
     {
         "av_sync_test.ogv",
-        "big_buck_bunny_720p_stereo.ogv"
+        "big_buck_bunny_720p_stereo.ogv",
     };
     public int selected = 0;
+    public RenderTexture renderTexture;
 
     void OnGUI()
     {
@@ -17,7 +18,10 @@ public class MovieController : MonoBehaviour
         {
             if (player == null)
             {
+                var audioSource = gameObject.AddComponent<AudioSource>();
+                audioSource.playOnAwake = false;
                 player = gameObject.AddComponent<VideoPlayer>();
+                player.renderTexture = renderTexture;
             }
             else
             {
