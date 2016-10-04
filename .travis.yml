@@ -24,7 +24,7 @@ install:
   - uname -a
 
   # Install Python 3
-  - brew install python3
+  - travis_wait brew install python3
 
   # Install Python package 'requests'
   - pip3 install requests

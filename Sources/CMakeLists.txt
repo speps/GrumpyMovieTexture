@@ -50,6 +50,8 @@ set(GMT_SOURCES
     VideoPlayer.cpp
     VideoPlayer.h
     VideoPlayerInterface.cpp
+    ZipStream.cpp
+    ZipStream.h
     ${LIBOGG_SOURCES}
     ${LIBTHEORA_SOURCES}
     ${LIBVORBIS_SOURCES}
@@ -69,5 +71,6 @@ target_include_directories(GrumpyMovieTexture PRIVATE
     ${PROJECT_SOURCE_DIR}/External/${LIBOGG_VERSION}/include
     ${PROJECT_SOURCE_DIR}/External/${LIBTHEORA_VERSION}/include
     ${PROJECT_SOURCE_DIR}/External/${LIBVORBIS_VERSION}/include
+    ${PROJECT_SOURCE_DIR}/External/miniz
 )
 target_link_libraries(GrumpyMovieTexture ${GMT_LIBS})
