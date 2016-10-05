@@ -3,6 +3,7 @@ using System.Collections;
 using System.Runtime.InteropServices;
 using System;
 using System.IO;
+using System.Collections.Generic;
 
 public class VideoPlayer : MonoBehaviour
 {
@@ -94,6 +95,7 @@ public class VideoPlayer : MonoBehaviour
     Texture2D[] textures = new Texture2D[3];
     AudioConfiguration currentAudioConfiguration, newAudioConfiguration;
     bool isPlayingCached; // cached value as calling native methods doesn't work on all threads
+    Queue<State> newStates = new Queue<State>();
 
     void OnEnable()
     {
@@ -151,9 +153,9 @@ public class VideoPlayer : MonoBehaviour
     {
         GCHandle handle = GCHandle.FromIntPtr(userData);
         VideoPlayer player = (VideoPlayer)handle.Target;
-        if (player.OnStateChanged != null)
+        lock (player.newStates)
         {
-            player.OnStateChanged(newState);
+            player.newStates.Enqueue(newState);
         }
     }
 
@@ -195,6 +197,18 @@ public class VideoPlayer : MonoBehaviour
 
     void Update()
     {
+        lock (newStates)
+        {
+            while (newStates.Count > 0)
+            {
+                State newState = newStates.Dequeue();
+                if (OnStateChanged != null)
+                {
+                    OnStateChanged(newState);
+                }
+            }
+        }
+
         VPUpdate(player, Time.unscaledDeltaTime);
         isPlayingCached = VPIsPlaying(player);
 
