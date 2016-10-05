@@ -10,7 +10,7 @@ language:
 matrix:
   include:
     - os: osx
-      osx_image: beta-xcode6.1
+      osx_image: xcode6.4
       env: TOOLCHAIN=osx-10-9 CONFIG=Release ARTIFACT=.bintray.osx.json ARCHS="i386;x86_64"
     - os: osx
       osx_image: beta-xcode6.1
