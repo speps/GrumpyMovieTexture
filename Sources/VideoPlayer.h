@@ -15,6 +15,8 @@
 #include <theora/theoradec.h>
 #include <vorbis/codec.h>
 
+#include "ZipStream.h"
+
 #define VIDEO_PLAYER_OGG_BUFFER_SIZE 4096
 #define VIDEO_PLAYER_AUDIO_BUFFER_SIZE 4096
 #define VIDEO_PLAYER_AUDIO_BUFFERED_FRAMES 4
@@ -57,6 +59,7 @@ private:
     void* _userData;
     VideoPlayerState _state;
     FILE* _fileStream;
+    ZipStream _zipStream;
     VideoStatusCallback _statusCallback;
     VideoGetValueCallback _getValueCallback;
     VideoDataCallback _dataCallback;

@@ -1,4 +1,6 @@
+#include <miniz.c>
 #include "ZipStream.h"
+#include <string.h>
 
 bool ZipStream::open(const char* zipname, const char* entryname)
 {
@@ -131,6 +133,7 @@ size_t ZipStream::read(uint8_t* buffer, size_t bufferSize)
 void ZipStream::close()
 {
     mz_zip_reader_end(&_zip);
+    _index = -1;
     _fileStart = 0;
     _fileOffset = 0;
     _readBuffer = nullptr;

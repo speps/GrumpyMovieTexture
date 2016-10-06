@@ -1,3 +1,6 @@
+#pragma once
+
+#define MINIZ_HEADER_FILE_ONLY
 #include <miniz.c>
 #include <stdio.h>
 #include <stdint.h>
@@ -6,7 +9,7 @@ class ZipStream
 {
 public:
     ZipStream()
-        : _index(0)
+        : _index(-1)
         , _crc32(MZ_CRC32_INIT)
         , _fileStart(0)
         , _fileOffset(0)
@@ -23,6 +26,10 @@ public:
     bool open(const char* zipname, const char* entryname);
     size_t read(uint8_t* buffer, size_t bufferSize);
 
+    bool isOpen() const
+    {
+        return _index != -1;
+    }
     bool checksum() const
     {
         return _crc32 == _filestat.m_crc32;

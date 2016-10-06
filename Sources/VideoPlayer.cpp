@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <regex>
 
 VideoPlayer::VideoPlayer(void* userData, VideoStatusCallback statusCallback, VideoGetValueCallback getValueCallback)
     : _userData(userData), _state(VideoPlayerState::Initialized), _fileStream(nullptr)
@@ -45,8 +46,15 @@ bool VideoPlayer::readStream()
         ogg_sync_wrote(&_oggState.oggSyncState, bytesRead);
         return success;
     }
+    else if (_zipStream.isOpen())
+    {
+        std::size_t bytesRead = _zipStream.read(buffer, VIDEO_PLAYER_OGG_BUFFER_SIZE);
+        ogg_sync_wrote(&_oggState.oggSyncState, bytesRead);
+        return bytesRead >= VIDEO_PLAYER_OGG_BUFFER_SIZE;
+    }
     else
     {
+        assert(_fileStream);
         std::size_t bytesRead = fread(buffer, 1, VIDEO_PLAYER_OGG_BUFFER_SIZE, _fileStream);
         ogg_sync_wrote(&_oggState.oggSyncState, bytesRead);
         return bytesRead >= VIDEO_PLAYER_OGG_BUFFER_SIZE;
@@ -599,10 +607,25 @@ bool VideoPlayer::openFile(std::string filePath, VideoCreateTextureCallback crea
     {
         return false;
     }
-    _fileStream = fopen(filePath.c_str(), "rb");
-    if (_fileStream == nullptr)
+
+    static std::regex jarRegex("jar:file://(.+?)!/(.+?)", std::regex_constants::icase);
+    std::smatch jarMatch;
+    if (std::regex_match(filePath, jarMatch, jarRegex))
     {
-        return false;
+        const std::string jarFile = jarMatch[1].str();
+        const std::string assetFile = jarMatch[2].str();
+        if (!_zipStream.open(jarFile.c_str(), assetFile.c_str()))
+        {
+            return false;
+        }
+    }
+    else
+    {
+        _fileStream = fopen(filePath.c_str(), "rb");
+        if (_fileStream == nullptr)
+        {
+            return false;
+        }
     }
 
     _dataCallback = nullptr;
@@ -657,6 +680,10 @@ void VideoPlayer::stop()
     if (_fileStream != nullptr)
     {
         fclose(_fileStream);
+    }
+    if (_zipStream.isOpen())
+    {
+        _zipStream.close();
     }
 }
 
