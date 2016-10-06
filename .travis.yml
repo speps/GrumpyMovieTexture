@@ -13,8 +13,8 @@ matrix:
       osx_image: xcode6.4
       env: TOOLCHAIN=osx-10-9 CONFIG=Release ARTIFACT=.bintray.osx.json ARCHS="i386;x86_64"
     - os: osx
-      osx_image: beta-xcode6.1
-      env: TOOLCHAIN=ios-nocodesign CONFIG=Release EXTRA="--ios-multiarch" ARTIFACT=.bintray.ios8.json
+      osx_image: xcode6.4
+      env: TOOLCHAIN=ios-nocodesign-8-4 CONFIG=Release EXTRA="--ios-multiarch" ARTIFACT=.bintray.ios8.json
     - os: osx
       osx_image: xcode7.2
       env: TOOLCHAIN=ios-nocodesign-9-2 CONFIG=Release EXTRA="--ios-multiarch" ARTIFACT=.bintray.ios9.json ENABLE_BITCODE=YES
