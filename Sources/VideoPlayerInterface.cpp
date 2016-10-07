@@ -8,9 +8,9 @@
 #define UNITY_INTERFACE_EXPORT
 #endif
 
-extern "C" UNITY_INTERFACE_EXPORT void* VPCreate(void* userData, VideoStatusCallback statusCallback, VideoGetValueCallback getValueCallback)
+extern "C" UNITY_INTERFACE_EXPORT void* VPCreate(void* userData, VideoStatusCallback statusCallback, VideoLogCallback logCallback, VideoGetValueCallback getValueCallback)
 {
-    return new VideoPlayer(userData, statusCallback, getValueCallback);
+    return new VideoPlayer(userData, statusCallback, logCallback, getValueCallback);
 }
 
 extern "C" UNITY_INTERFACE_EXPORT void VPDestroy(VideoPlayer* player)
@@ -26,6 +26,12 @@ extern "C" UNITY_INTERFACE_EXPORT bool VPOpenCallback(VideoPlayer* player, Video
 extern "C" UNITY_INTERFACE_EXPORT bool VPOpenFile(VideoPlayer* player, char* filePath, VideoCreateTextureCallback createTextureCallback, VideoUploadTextureCallback uploadTextureCallback)
 {
     return player && player->openFile(filePath, createTextureCallback, uploadTextureCallback);
+}
+
+extern "C" UNITY_INTERFACE_EXPORT void VPSetDebugEnabled(VideoPlayer* player, bool enabled)
+{
+    assert(player);
+    player->setDebugEnabled(enabled);
 }
 
 extern "C" UNITY_INTERFACE_EXPORT void VPPlay(VideoPlayer* player)

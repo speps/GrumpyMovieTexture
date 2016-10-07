@@ -38,6 +38,7 @@ public class VideoPlayer : MonoBehaviour
     public event StateChangedCallback OnStateChanged;
 
     private delegate void StatusCallback(IntPtr userData, State newState);
+    private delegate void LogCallback(IntPtr userData, string text);
     private delegate bool GetValueCallback(IntPtr userData, ValueType type, IntPtr value);
     private delegate bool DataCallback(IntPtr userData, IntPtr data, int bytesMax, out int bytesRead);
     private delegate IntPtr CreateTextureCallback(IntPtr userData, int index, int width, int height);
@@ -50,10 +51,13 @@ public class VideoPlayer : MonoBehaviour
 #endif
 
     [DllImport(DLLName)]
-    private static extern IntPtr VPCreate(IntPtr userData, StatusCallback statusCallback, GetValueCallback getValueCallback);
+    private static extern IntPtr VPCreate(IntPtr userData, StatusCallback statusCallback, LogCallback logCallback, GetValueCallback getValueCallback);
 
     [DllImport(DLLName)]
     private static extern void VPDestroy(IntPtr player);
+
+    [DllImport(DLLName)]
+    private static extern void VPSetDebugEnabled(IntPtr player, bool enabled);
 
     [DllImport(DLLName)]
     private static extern void VPPlay(IntPtr player);
@@ -100,7 +104,8 @@ public class VideoPlayer : MonoBehaviour
     void OnEnable()
     {
         handle = GCHandle.Alloc(this);
-        player = VPCreate(GCHandle.ToIntPtr(handle), OnStatusCallback, OnGetValueCallback);
+        player = VPCreate(GCHandle.ToIntPtr(handle), OnStatusCallback, OnLogCallback, OnGetValueCallback);
+        VPSetDebugEnabled(player, true);
         var shader = Shader.Find("Hidden/GrumpyConvertRGB");
         material = new Material(shader);
 
@@ -130,7 +135,9 @@ public class VideoPlayer : MonoBehaviour
         {
             return;
         }
-        var filePath = Path.Combine(Application.streamingAssetsPath, streamingAssetsFileName);
+        //var filePath = Path.Combine(Application.streamingAssetsPath, streamingAssetsFileName);
+        var filePath = string.Format("jar:file://{0}!/assets/av_sync_test.ogv", Path.Combine(Application.streamingAssetsPath, "app-debug.apk"));
+        Debug.Log(filePath);
         bool result = VPOpenFile(player, filePath, OnCreateTextureCallback, OnUploadTextureCallback);
         if (!result)
         {
@@ -157,6 +164,12 @@ public class VideoPlayer : MonoBehaviour
         {
             player.newStates.Enqueue(newState);
         }
+    }
+
+    [MonoPInvokeCallback(typeof(LogCallback))]
+    static void OnLogCallback(IntPtr userData, string text)
+    {
+        Debug.LogFormat("{0}: {1}", userData.ToInt32(), text);
     }
 
     [MonoPInvokeCallback(typeof(GetValueCallback))]

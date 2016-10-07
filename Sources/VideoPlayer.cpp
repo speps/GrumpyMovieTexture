@@ -3,12 +3,18 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <stdarg.h>
 #include <regex>
 
-VideoPlayer::VideoPlayer(void* userData, VideoStatusCallback statusCallback, VideoGetValueCallback getValueCallback)
-    : _userData(userData), _state(VideoPlayerState::Initialized), _fileStream(nullptr)
+void VideoPlayer::zipLogCallback(void* userData, const char* text)
+{
+    ((VideoPlayer*)userData)->log(text);
+}
+
+VideoPlayer::VideoPlayer(void* userData, VideoStatusCallback statusCallback, VideoLogCallback logCallback, VideoGetValueCallback getValueCallback)
+    : _userData(userData), _debugEnabled(false), _state(VideoPlayerState::Initialized), _fileStream(nullptr), _zipStream(this, &zipLogCallback)
     , _timer(0.0), _timerStart(0.0), _timeLastFrame(0.0), _audioBufferSize(VIDEO_PLAYER_AUDIO_BUFFER_SIZE)
-    , _audioTotalSamples(0), _videoTime(0.0), _statusCallback(statusCallback), _getValueCallback(getValueCallback)
+    , _audioTotalSamples(0), _videoTime(0.0), _statusCallback(statusCallback), _logCallback(logCallback), _getValueCallback(getValueCallback)
     , _dataCallback(nullptr), _createTextureCallback(nullptr) , _uploadTextureCallback(nullptr), _processVideo(false)
 {
 }
@@ -25,6 +31,23 @@ void VideoPlayer::destroy()
     _dataCallback = nullptr;
     _createTextureCallback = nullptr;
     _uploadTextureCallback = nullptr;
+}
+
+void VideoPlayer::log(const char* format, ...)
+{
+    if (!_debugEnabled)
+    {
+        return;
+    }
+    char temp[1024];
+    va_list args;
+    va_start(args, format);
+    vsnprintf(temp, sizeof(temp), format, args);
+    va_end(args);
+    if (_logCallback != nullptr)
+    {
+        _logCallback(_userData, temp);
+    }
 }
 
 void VideoPlayer::setState(VideoPlayerState newState)
@@ -125,7 +148,7 @@ bool VideoPlayer::readHeaders()
             result = th_decode_headerin(&_oggState.theoraInfo, &_oggState.theoraComment, &_oggState.theoraSetup, &packet);
             if (result < 0)
             {
-                LOG("Invalid Theora stream\n");
+                log("Invalid Theora stream\n");
                 _oggState.hasTheora = false;
                 break;
             }
@@ -138,7 +161,7 @@ bool VideoPlayer::readHeaders()
                 continue;
             if (vorbis_synthesis_headerin(&_oggState.vorbisInfo, &_oggState.vorbisComment, &packet))
             {
-                LOG("Invalid Vorbis stream\n");
+                log("Invalid Vorbis stream\n");
                 _oggState.hasVorbis = false;
                 break;
             }
@@ -172,7 +195,7 @@ bool VideoPlayer::readHeaders()
     {
         if (_oggState.vorbisInfo.channels != 2)
         {
-            LOG("Only supports stereo audio");
+            log("Only supports stereo audio");
             vorbis_info_clear(&_oggState.vorbisInfo);
             vorbis_comment_clear(&_oggState.vorbisComment);
             _oggState.hasVorbis = false;

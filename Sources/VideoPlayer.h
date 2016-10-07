@@ -23,12 +23,6 @@
 #define VIDEO_PLAYER_VIDEO_BUFFERED_FRAMES 3
 #define MALLOC malloc
 #define FREE free
-#if WIN32
-#include <windows.h>
-#define LOG(...) { char tmp[1024]; sprintf_s(tmp, sizeof(tmp), __VA_ARGS__); OutputDebugStringA(tmp); }
-#else
-#define LOG(...)
-#endif
 
 enum class VideoPlayerState
 {
@@ -48,6 +42,7 @@ enum class VideoPlayerValueType
 };
 
 typedef void (*VideoStatusCallback)(void* userData, VideoPlayerState newState);
+typedef void (*VideoLogCallback)(void* userData, const char* text);
 typedef bool (*VideoGetValueCallback)(void* userData, VideoPlayerValueType type, void* value);
 typedef bool (*VideoDataCallback)(void* userData, uint8_t* outData, uint32_t bytesMax, uint32_t* bytesRead);
 typedef void* (*VideoCreateTextureCallback)(void* userData, int index, int width, int height);
@@ -57,10 +52,12 @@ class VideoPlayer
 {
 private:
     void* _userData;
+    bool _debugEnabled;
     VideoPlayerState _state;
     FILE* _fileStream;
     ZipStream _zipStream;
     VideoStatusCallback _statusCallback;
+    VideoLogCallback _logCallback;
     VideoGetValueCallback _getValueCallback;
     VideoDataCallback _dataCallback;
     VideoCreateTextureCallback _createTextureCallback;
@@ -172,12 +169,20 @@ private:
     void signalPause();
     void cancelPause();
     bool waitPause();
+
+    void log(const char* format, ...);
+    static void zipLogCallback(void* userData, const char* text);
 public:
-    VideoPlayer(void* userData, VideoStatusCallback statusCallback, VideoGetValueCallback getValueCallback);
+    VideoPlayer(void* userData, VideoStatusCallback statusCallback, VideoLogCallback logCallback, VideoGetValueCallback getValueCallback);
     virtual ~VideoPlayer();
 
     VideoPlayerState state() const
     { return _state; }
+    void setDebugEnabled(bool enabled)
+    {
+        _debugEnabled = enabled;
+        _zipStream.setDebugEnabled(enabled);
+    }
 
     bool openCallback(VideoDataCallback dataCallback, VideoCreateTextureCallback createTextureCallback, VideoUploadTextureCallback uploadTextureCallback);
     bool openFile(std::string filePath, VideoCreateTextureCallback createTextureCallback, VideoUploadTextureCallback uploadTextureCallback);

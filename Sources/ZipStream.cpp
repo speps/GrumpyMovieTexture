@@ -1,10 +1,13 @@
 #include <miniz.c>
 #include "ZipStream.h"
 #include <string.h>
+#include <stdarg.h>
 
 bool ZipStream::open(const char* zipname, const char* entryname)
 {
     close();
+
+    log("ZipStream::open: zipname=%s entryname=%s", zipname, entryname);
 
     // Now try to open the archive.
     memset(&_zip, 0, sizeof(_zip));
@@ -13,12 +16,14 @@ bool ZipStream::open(const char* zipname, const char* entryname)
     mz_bool status = mz_zip_reader_init_file(&_zip, zipname, 0);
     if (!status)
     {
+        log("ZipStream::open: mz_zip_reader_init_file failed");
         return false;
     }
 
     _index = mz_zip_reader_locate_file(&_zip, entryname, "", 0);
     if (_index == -1)
     {
+        log("ZipStream::open: mz_zip_reader_locate_file failed");
         close();
         return false;
     }
@@ -26,6 +31,7 @@ bool ZipStream::open(const char* zipname, const char* entryname)
     status = mz_zip_reader_file_stat(&_zip, _index, &_filestat);
     if (!status)
     {
+        log("ZipStream::open: mz_zip_reader_file_stat failed");
         close();
         return false;
     }
@@ -36,11 +42,13 @@ bool ZipStream::open(const char* zipname, const char* entryname)
     _fileStart = _filestat.m_local_header_ofs;
     if (_zip.m_pRead(_zip.m_pIO_opaque, _fileStart, pLocal_header, MZ_ZIP_LOCAL_DIR_HEADER_SIZE) != MZ_ZIP_LOCAL_DIR_HEADER_SIZE)
     {
+        log("ZipStream::open: reading header failed");
         close();
         return false;
     }
     if (MZ_READ_LE32(pLocal_header) != MZ_ZIP_LOCAL_DIR_HEADER_SIG)
     {
+        log("ZipStream::open: header signature failed");
         close();
         return false;
     }
@@ -48,6 +56,7 @@ bool ZipStream::open(const char* zipname, const char* entryname)
     _fileStart += MZ_ZIP_LOCAL_DIR_HEADER_SIZE + MZ_READ_LE16(pLocal_header + MZ_ZIP_LDH_FILENAME_LEN_OFS) + MZ_READ_LE16(pLocal_header + MZ_ZIP_LDH_EXTRA_LEN_OFS);
     if ((_fileStart + _filestat.m_comp_size) > _zip.m_archive_size)
     {
+        log("ZipStream::open: file size failed");
         close();
         return false;
     }
@@ -148,19 +157,31 @@ bool ZipStream::fileChecks()
 {
     // Empty file, or a directory (but not always a directory - I've seen odd zips with directories that have compressed data which inflates to 0 bytes)
     if (!_filestat.m_comp_size)
-        return true;
+    {
+        log("ZipStream::fileChecks: empty file");
+        return false;
+    }
 
     // Entry is a subdirectory (I've seen old zips with dir entries which have compressed deflate data which inflates to 0 bytes, but these entries claim to uncompress to 512 bytes in the headers).
     if (mz_zip_reader_is_file_a_directory(&_zip, _index))
+    {
+        log("ZipStream::fileChecks: file is folder");
         return false;
+    }
 
     // Encryption and patch files are not supported.
     if (_filestat.m_bit_flag & (1 | 32))
+    {
+        log("ZipStream::fileChecks: encryption and patch files not supported");
         return false;
+    }
 
     // This function only supports stored and deflate.
     if ((_filestat.m_method != 0) && (_filestat.m_method != MZ_DEFLATED))
+    {
+        log("ZipStream::fileChecks: only supports deflate and stored");
         return false;
+    }
 
     return true;
 }
@@ -171,4 +192,21 @@ size_t ZipStream::readInternal(uint8_t* buffer, size_t bufferSize)
     size_t nRead = _zip.m_pRead(_zip.m_pIO_opaque, _fileStart + _fileOffset, buffer, numLeft);
     _fileOffset += nRead;
     return nRead;
+}
+
+void ZipStream::log(const char* format, ...)
+{
+    if (!_debugEnabled)
+    {
+        return;
+    }
+    char temp[1024];
+    va_list args;
+    va_start(args, format);
+    vsnprintf(temp, sizeof(temp), format, args);
+    va_end(args);
+    if (_logCallback != nullptr)
+    {
+        _logCallback(_userData, temp);
+    }
 }
