@@ -135,9 +135,7 @@ public class VideoPlayer : MonoBehaviour
         {
             return;
         }
-        //var filePath = Path.Combine(Application.streamingAssetsPath, streamingAssetsFileName);
-        var filePath = string.Format("jar:file://{0}!/assets/av_sync_test.ogv", Path.Combine(Application.streamingAssetsPath, "app-debug.apk"));
-        Debug.Log(filePath);
+        var filePath = Path.Combine(Application.streamingAssetsPath, streamingAssetsFileName);
         bool result = VPOpenFile(player, filePath, OnCreateTextureCallback, OnUploadTextureCallback);
         if (!result)
         {
