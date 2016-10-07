@@ -41,7 +41,7 @@ install:
   - if [[ "${ENABLE_BITCODE}" == "YES" ]]; then echo -e "\nENABLE_BITCODE = YES" >> ${POLLY_ROOT}/scripts/NoCodeSign.xcconfig; fi
 
   # Install dependencies (CMake, Android NDK)
-  - install-ci-dependencies.py
+  - travis_wait install-ci-dependencies.py
 
   # Tune locations
   - export PATH="`pwd`/_ci/cmake/bin:${PATH}"
