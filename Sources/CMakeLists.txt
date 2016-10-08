@@ -63,6 +63,9 @@ if(IOS)
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     add_library(GrumpyMovieTexture MODULE ${GMT_SOURCES})
     set_target_properties(GrumpyMovieTexture PROPERTIES BUNDLE 1)
+elseif(ANDROID)
+    list(APPEND GMT_SOURCES "${PROJECT_SOURCE_DIR}/External/coffeecatch/coffeecatch.c")
+    add_library(GrumpyMovieTexture MODULE ${GMT_SOURCES})
 else()
     add_library(GrumpyMovieTexture SHARED ${GMT_SOURCES})
 endif()
@@ -72,5 +75,6 @@ target_include_directories(GrumpyMovieTexture PRIVATE
     ${PROJECT_SOURCE_DIR}/External/${LIBTHEORA_VERSION}/include
     ${PROJECT_SOURCE_DIR}/External/${LIBVORBIS_VERSION}/include
     ${PROJECT_SOURCE_DIR}/External/miniz
+    ${PROJECT_SOURCE_DIR}/External/coffeecatch
 )
 target_link_libraries(GrumpyMovieTexture ${GMT_LIBS})
