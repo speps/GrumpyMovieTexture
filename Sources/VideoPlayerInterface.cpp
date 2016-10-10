@@ -10,7 +10,7 @@
 
 #if ANDROID
 #include <coffeecatch.h>
-#define SAFE_CALL(code) \
+#define SAFE_CALL(code,catchcode) \
     COFFEE_TRY() { \
     code; \
     } COFFEE_CATCH() { \
@@ -18,12 +18,13 @@
     fprintf(stderr, "**FATAL ERROR: %s\n", message); \
     } COFFEE_END();
 #else
-    #define SAFE_CALL(code)
+    #define SAFE_CALL(code) do { code; } while(false);
+    #define SAFE_CALL_RET(code,catchcode) do { code; } while(false);
 #endif
 
 extern "C" UNITY_INTERFACE_EXPORT void* VPCreate(void* userData, VideoStatusCallback statusCallback, VideoLogCallback logCallback, VideoGetValueCallback getValueCallback)
 {
-    SAFE_CALL(return new VideoPlayer(userData, statusCallback, logCallback, getValueCallback));
+    SAFE_CALL_RET(return new VideoPlayer(userData, statusCallback, logCallback, getValueCallback),return nullptr);
 }
 
 extern "C" UNITY_INTERFACE_EXPORT void VPDestroy(VideoPlayer* player)
@@ -33,12 +34,12 @@ extern "C" UNITY_INTERFACE_EXPORT void VPDestroy(VideoPlayer* player)
 
 extern "C" UNITY_INTERFACE_EXPORT bool VPOpenCallback(VideoPlayer* player, VideoDataCallback dataCallback, VideoCreateTextureCallback createTextureCallback, VideoUploadTextureCallback uploadTextureCallback)
 {
-    SAFE_CALL(return player && player->openCallback(dataCallback, createTextureCallback, uploadTextureCallback));
+    SAFE_CALL_RET(return player && player->openCallback(dataCallback, createTextureCallback, uploadTextureCallback),return false);
 }
 
 extern "C" UNITY_INTERFACE_EXPORT bool VPOpenFile(VideoPlayer* player, char* filePath, VideoCreateTextureCallback createTextureCallback, VideoUploadTextureCallback uploadTextureCallback)
 {
-    SAFE_CALL(return player && player->openFile(filePath, createTextureCallback, uploadTextureCallback));
+    SAFE_CALL_RET(return player && player->openFile(filePath, createTextureCallback, uploadTextureCallback),return false);
 }
 
 extern "C" UNITY_INTERFACE_EXPORT void VPSetDebugEnabled(VideoPlayer* player, bool enabled)
@@ -55,7 +56,7 @@ extern "C" UNITY_INTERFACE_EXPORT void VPPlay(VideoPlayer* player)
 
 extern "C" UNITY_INTERFACE_EXPORT bool VPIsPlaying(VideoPlayer* player)
 {
-    SAFE_CALL(return player && player->isPlaying());
+    SAFE_CALL_RET(return player && player->isPlaying(),return false);
 }
 
 extern "C" UNITY_INTERFACE_EXPORT void VPStop(VideoPlayer* player)
@@ -66,7 +67,7 @@ extern "C" UNITY_INTERFACE_EXPORT void VPStop(VideoPlayer* player)
 
 extern "C" UNITY_INTERFACE_EXPORT bool VPIsStopped(VideoPlayer* player)
 {
-    SAFE_CALL(return player && player->isStopped());
+    SAFE_CALL_RET(return player && player->isStopped(),return false);
 }
 
 extern "C" UNITY_INTERFACE_EXPORT void VPUpdate(VideoPlayer* player, float timeStep)
