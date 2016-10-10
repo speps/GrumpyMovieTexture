@@ -10,13 +10,21 @@
 
 #if ANDROID
 #include <coffeecatch.h>
-#define SAFE_CALL(code,catchcode) \
+#define SAFE_CALL(code) \
     COFFEE_TRY() { \
     code; \
     } COFFEE_CATCH() { \
     const char*const message = coffeecatch_get_message(); \
     fprintf(stderr, "**FATAL ERROR: %s\n", message); \
     } COFFEE_END();
+#define SAFE_CALL_RET(code,catchcode) \
+    COFFEE_TRY() { \
+    code; \
+    } COFFEE_CATCH() { \
+    const char*const message = coffeecatch_get_message(); \
+    fprintf(stderr, "**FATAL ERROR: %s\n", message); \
+    } COFFEE_END(); \
+    catchcode;
 #else
     #define SAFE_CALL(code) do { code; } while(false);
     #define SAFE_CALL_RET(code,catchcode) do { code; } while(false);
