@@ -97,12 +97,13 @@ public class VideoPlayer : MonoBehaviour
     Material material;
     Rect sourceRect;
     Texture2D[] textures = new Texture2D[3];
-    AudioConfiguration currentAudioConfiguration, newAudioConfiguration;
+    AudioConfiguration currentAudioConfiguration, lastAudioConfiguration, newAudioConfiguration;
     bool isPlayingCached; // cached value as calling native methods doesn't work on all threads
     Queue<State> newStates = new Queue<State>();
 
     void OnEnable()
     {
+        currentAudioConfiguration = AudioSettings.GetConfiguration();
         handle = GCHandle.Alloc(this);
         player = VPCreate(GCHandle.ToIntPtr(handle), OnStatusCallback, OnLogCallback, OnGetValueCallback);
         VPSetDebugEnabled(player, true);
@@ -121,6 +122,7 @@ public class VideoPlayer : MonoBehaviour
         VPDestroy(player);
         player = IntPtr.Zero;
         handle.Free();
+        AudioSettings.Reset(currentAudioConfiguration);
     }
 
     public void Open(string fileName)
@@ -148,9 +150,19 @@ public class VideoPlayer : MonoBehaviour
         int channels, frequency;
         VPGetAudioInfo(player, out channels, out frequency);
         currentAudioConfiguration = AudioSettings.GetConfiguration();
+        lastAudioConfiguration = currentAudioConfiguration;
         newAudioConfiguration = currentAudioConfiguration;
         newAudioConfiguration.sampleRate = frequency;
         newAudioConfiguration.speakerMode = channels == 2 ? AudioSpeakerMode.Stereo : AudioSpeakerMode.Mono;
+    }
+
+    bool IsCorrectAudioConfiguration()
+    {
+        return lastAudioConfiguration.dspBufferSize == newAudioConfiguration.dspBufferSize
+            && lastAudioConfiguration.numRealVoices == newAudioConfiguration.numRealVoices
+            && lastAudioConfiguration.numVirtualVoices == newAudioConfiguration.numVirtualVoices
+            && lastAudioConfiguration.sampleRate == newAudioConfiguration.sampleRate
+            && lastAudioConfiguration.speakerMode == newAudioConfiguration.speakerMode;
     }
 
     [MonoPInvokeCallback(typeof(StatusCallback))]
@@ -259,17 +271,21 @@ public class VideoPlayer : MonoBehaviour
         {
             OpenResource();
         }
-        if (!AudioSettings.Reset(newAudioConfiguration))
+        if (!IsCorrectAudioConfiguration())
         {
-            Debug.LogError("Problem setting audio settings");
-        }
-        else
-        {
-            var audioSource = GetComponent<AudioSource>();
-            if (audioSource != null)
+            if (!AudioSettings.Reset(newAudioConfiguration))
             {
-                audioSource.Play();
+                Debug.LogError("Problem setting audio settings");
             }
+            else
+            {
+                lastAudioConfiguration = newAudioConfiguration;
+            }
+        }
+        var audioSource = GetComponent<AudioSource>();
+        if (audioSource != null)
+        {
+            audioSource.Play();
         }
         VPPlay(player);
     }
@@ -287,7 +303,6 @@ public class VideoPlayer : MonoBehaviour
         {
             audioSource.Stop();
         }
-        AudioSettings.Reset(currentAudioConfiguration);
     }
 
     void OnAudioFilterRead(float[] data, int channels)
