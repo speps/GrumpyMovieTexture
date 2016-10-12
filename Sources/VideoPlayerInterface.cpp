@@ -8,7 +8,7 @@
 #define UNITY_INTERFACE_EXPORT
 #endif
 
-#if ANDROID
+#if ANDROID && __arm__
 #include <coffeecatch.h>
 #define SAFE_CALL(code) \
     COFFEE_TRY() { \
