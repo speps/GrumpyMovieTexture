@@ -611,6 +611,7 @@ bool VideoPlayer::open()
 {
     if (!readHeaders())
     {
+        log("failed to read headers");
         setState(VideoPlayerState::Stopped);
         return false;
     }
@@ -648,19 +649,24 @@ bool VideoPlayer::openFile(std::string filePath, VideoCreateTextureCallback crea
         return false;
     }
 
+    log("opening file: %s", filePath.c_str());
+
     static std::regex jarRegex("jar:file://(.+?)!/(.+?)", std::regex_constants::icase);
     std::smatch jarMatch;
     if (std::regex_match(filePath, jarMatch, jarRegex))
     {
+        log("zip format", filePath.c_str());
         const std::string jarFile = jarMatch[1].str();
         const std::string assetFile = jarMatch[2].str();
         if (!_zipStream.open(jarFile.c_str(), assetFile.c_str()))
         {
+            log("failed to open zip: %s, entry %s", jarFile.c_str(), assetFile.c_str());
             return false;
         }
     }
     else
     {
+        log("normal file", filePath.c_str());
         _fileStream = fopen(filePath.c_str(), "rb");
         if (_fileStream == nullptr)
         {
