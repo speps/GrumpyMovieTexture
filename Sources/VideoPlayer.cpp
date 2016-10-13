@@ -213,6 +213,23 @@ bool VideoPlayer::readHeaders()
         vorbis_comment_clear(&_oggState.vorbisComment);
     }
 
+    if (_oggState.hasTheora)
+    {
+        log("video: %dx%d %.2f fps", _oggState.theoraInfo.frame_width, _oggState.theoraInfo.frame_height, (double)_oggState.theoraInfo.fps_numerator / _oggState.theoraInfo.fps_denominator);
+    }
+    else
+    {
+        log("no video");
+    }
+    if (_oggState.hasVorbis)
+    {
+        log("audio: %d hz %d channels", _oggState.vorbisInfo.rate, _oggState.vorbisInfo.channels);
+    }
+    else
+    {
+        log("no audio");
+    }
+
     return _oggState.hasTheora || _oggState.hasVorbis;
 }
 
