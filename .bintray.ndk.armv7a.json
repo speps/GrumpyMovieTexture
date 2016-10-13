@@ -9,7 +9,7 @@
     },
     "files":
         [
-        {"includePattern": "_output/android-ndk-r10e-api-21-armeabi-v7a-neon-clang-35/(libGrumpyMovieTextured\\.so)", "uploadPattern": "Plugins/Android/libs/armeabi-v7a/libGrumpyMovieTexture.so", "matrixParams": { "override": 1 } }
+        {"includePattern": "_output/android-ndk-r10e-api-21-armeabi-v7a-neon/(libGrumpyMovieTextured\\.so)", "uploadPattern": "Plugins/Android/libs/armeabi-v7a/libGrumpyMovieTexture.so", "matrixParams": { "override": 1 } }
         ],
     "publish": true
 }
