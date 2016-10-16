@@ -67,13 +67,13 @@ bool ZipStream::open(const char* zipname, const char* entryname)
 
     if (_filestat.m_method != 0)
     {
-        _readBuffer = static_cast<uint8_t*>(_zip.m_pAlloc(_zip.m_pAlloc_opaque, 1, _readBufferSize));
+        _readBuffer.reset(new uint8_t[_readBufferSize]);
         if (_readBuffer == nullptr)
         {
             close();
             return false;
         }
-        _decompressBuffer = static_cast<uint8_t*>(_zip.m_pAlloc(_zip.m_pAlloc_opaque, 1, _decompressBufferSize));
+        _decompressBuffer.reset(new uint8_t[_decompressBufferSize]);
         if (_decompressBuffer == nullptr)
         {
             close();
@@ -114,14 +114,16 @@ size_t ZipStream::read(uint8_t* buffer, size_t bufferSize)
         {
             if (_readOffset == _readSize)
             {
-                _readSize = readInternal(_readBuffer, _readBufferSize);
+                _readSize = readInternal(_readBuffer.get(), _readBufferSize);
                 _readOffset = 0;
             }
             size_t nRead = _readSize - _readOffset;
+            assert(_readOffset < _readBufferSize);
             uint8_t* readBuffer = &_readBuffer[_readOffset];
             size_t nWrote = _decompressBufferSize - _decompressedSize;
+            assert(_decompressedSize < _decompressBufferSize);
             uint8_t* writeBuffer = &_decompressBuffer[_decompressedSize];
-            tinfl_status status = tinfl_decompress(&_inflator, readBuffer, &nRead, _decompressBuffer, writeBuffer, &nWrote, _readSize < _readBufferSize ? 0 : TINFL_FLAG_HAS_MORE_INPUT);
+            tinfl_status status = tinfl_decompress(&_inflator, readBuffer, &nRead, _decompressBuffer.get(), writeBuffer, &nWrote, _readSize < _readBufferSize ? 0 : TINFL_FLAG_HAS_MORE_INPUT);
             _readOffset += nRead;
             _decompressedSize += nWrote;
             if (status == TINFL_STATUS_DONE)

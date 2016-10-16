@@ -4,6 +4,7 @@
 #include <miniz.c>
 #include <stdio.h>
 #include <stdint.h>
+#include <memory>
 
 typedef void (*ZipStreamLogCallback)(void* userData, const char* text);
 
@@ -62,10 +63,10 @@ private:
     tinfl_decompressor _inflator;
 
     size_t _readBufferSize;
-    uint8_t* _readBuffer;
+    std::unique_ptr<uint8_t[]> _readBuffer;
     size_t _readSize, _readOffset;
 
     size_t _decompressBufferSize;
-    uint8_t* _decompressBuffer;
+    std::unique_ptr<uint8_t[]> _decompressBuffer;
     size_t _decompressedSize, _decompressedOffset;
 };
