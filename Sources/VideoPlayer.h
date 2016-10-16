@@ -143,6 +143,7 @@ private:
                 ogg_stream_pagein(&vorbisStreamState, page);
         }
     };
+    std::mutex _oggMutex;
     OggState _oggState;
 
     void destroy();

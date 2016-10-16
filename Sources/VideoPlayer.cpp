@@ -244,7 +244,12 @@ void VideoPlayer::shutAudio()
 void VideoPlayer::pushAudioFrame()
 {
     float **pcm = nullptr;
-    int numSamples = vorbis_synthesis_pcmout(&_oggState.vorbisDSPState, &pcm);
+    int numSamples = 0;
+    {
+        std::unique_lock<std::mutex> lock(_oggMutex);
+        numSamples = vorbis_synthesis_pcmout(&_oggState.vorbisDSPState, &pcm);
+        vorbis_synthesis_read(&_oggState.vorbisDSPState, numSamples);
+    }
     if (numSamples == 0) // There are no PCM samples
     {
         return;
@@ -260,8 +265,6 @@ void VideoPlayer::pushAudioFrame()
     std::unique_lock<std::mutex> lock(_audioMutex);
     _audioFrames.push_back(std::move(frame));
     _audioTotalSamples += numSamples;
-
-    vorbis_synthesis_read(&_oggState.vorbisDSPState, numSamples);
 }
 
 void VideoPlayer::initVideo()
@@ -286,7 +289,10 @@ void VideoPlayer::pushVideoFrame()
 
     // Consume frame in any case
     th_ycbcr_buffer yuv;
-    th_decode_ycbcr_out(_oggState.theoraDecoder, yuv);
+    {
+        std::unique_lock<std::mutex> lock(_oggMutex);
+        th_decode_ycbcr_out(_oggState.theoraDecoder, yuv);
+    }
 
     // Push new frame
     {
@@ -494,6 +500,7 @@ void VideoPlayer::threadDecode(VideoPlayer* p)
         }
 
         // Decode audio
+        p->_oggMutex.lock();
         while (p->_oggState.hasVorbis && !audioReady && cachedAudioTotalSamples < p->_audioBufferSize)
         {
             int result = ogg_stream_packetout(&p->_oggState.vorbisStreamState, &packet);
@@ -514,8 +521,10 @@ void VideoPlayer::threadDecode(VideoPlayer* p)
                 break;
             }
         }
+        p->_oggMutex.unlock();
 
         // Decode video
+        p->_oggMutex.lock();
         while (p->_oggState.hasTheora && !videoReady && cachedVideoNumFrames < VIDEO_PLAYER_VIDEO_BUFFERED_FRAMES)
         {
             int result = ogg_stream_packetout(&p->_oggState.theoraStreamState, &packet);
@@ -533,6 +542,7 @@ void VideoPlayer::threadDecode(VideoPlayer* p)
                 break;
             }
         }
+        p->_oggMutex.unlock();
 
         const bool flushed = cachedAudioTotalSamples == 0 && cachedVideoNumFrames == 0;
         if (endOfFile && !audioReady && !videoReady && flushed)
@@ -541,6 +551,7 @@ void VideoPlayer::threadDecode(VideoPlayer* p)
             break;
         }
 
+        p->_oggMutex.lock();
         if ((p->_oggState.hasVorbis && !audioReady && cachedAudioTotalSamples < p->_audioBufferSize)
             || (p->_oggState.hasTheora && !videoReady && cachedVideoNumFrames < VIDEO_PLAYER_VIDEO_BUFFERED_FRAMES))
         {
@@ -554,6 +565,7 @@ void VideoPlayer::threadDecode(VideoPlayer* p)
                 endOfFile = true;
             }
         }
+        p->_oggMutex.unlock();
 
         if (!streaming && (!p->_oggState.hasVorbis || audioReady) && (!p->_oggState.hasTheora || videoReady))
         {
