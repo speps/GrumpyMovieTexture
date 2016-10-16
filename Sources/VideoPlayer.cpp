@@ -482,8 +482,19 @@ void VideoPlayer::threadDecode(VideoPlayer* p)
             break;
         }
 
+        int cachedAudioTotalSamples = 0;
+        {
+            std::unique_lock<std::mutex> lock(p->_audioMutex);
+            cachedAudioTotalSamples = p->_audioTotalSamples;
+        }
+        int cachedVideoNumFrames = 0;
+        {
+            std::unique_lock<std::mutex> lock(p->_videoMutex);
+            cachedVideoNumFrames = p->_videoFrames.size();
+        }
+
         // Decode audio
-        while (p->_oggState.hasVorbis && !audioReady && p->_audioTotalSamples < p->_audioBufferSize)
+        while (p->_oggState.hasVorbis && !audioReady && cachedAudioTotalSamples < p->_audioBufferSize)
         {
             int result = ogg_stream_packetout(&p->_oggState.vorbisStreamState, &packet);
             if (result > 0)
@@ -505,7 +516,7 @@ void VideoPlayer::threadDecode(VideoPlayer* p)
         }
 
         // Decode video
-        while (p->_oggState.hasTheora && !videoReady && p->_videoFrames.size() < VIDEO_PLAYER_VIDEO_BUFFERED_FRAMES)
+        while (p->_oggState.hasTheora && !videoReady && cachedVideoNumFrames < VIDEO_PLAYER_VIDEO_BUFFERED_FRAMES)
         {
             int result = ogg_stream_packetout(&p->_oggState.theoraStreamState, &packet);
             if (result > 0)
@@ -523,15 +534,15 @@ void VideoPlayer::threadDecode(VideoPlayer* p)
             }
         }
 
-        const bool flushed = p->_audioTotalSamples == 0 && p->_videoFrames.empty();
+        const bool flushed = cachedAudioTotalSamples == 0 && cachedVideoNumFrames == 0;
         if (endOfFile && !audioReady && !videoReady && flushed)
         {
             p->setState(VideoPlayerState::Stopped);
             break;
         }
 
-        if ((p->_oggState.hasVorbis && !audioReady && p->_audioTotalSamples < p->_audioBufferSize)
-            || (p->_oggState.hasTheora && !videoReady && p->_videoFrames.size() < VIDEO_PLAYER_VIDEO_BUFFERED_FRAMES))
+        if ((p->_oggState.hasVorbis && !audioReady && cachedAudioTotalSamples < p->_audioBufferSize)
+            || (p->_oggState.hasTheora && !videoReady && cachedVideoNumFrames < VIDEO_PLAYER_VIDEO_BUFFERED_FRAMES))
         {
             bool success = p->readStream();
             while (success && ogg_sync_pageout(&p->_oggState.oggSyncState, &page) > 0)
