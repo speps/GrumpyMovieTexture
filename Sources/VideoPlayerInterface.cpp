@@ -26,8 +26,8 @@
     } COFFEE_END(); \
     catchcode;
 #else
-    #define SAFE_CALL(code) do { code; } while(false);
-    #define SAFE_CALL_RET(code,catchcode) do { code; } while(false);
+    #define SAFE_CALL(code) do { printf(">>> " #code); code; printf("<<< " #code); } while(false);
+    #define SAFE_CALL_RET(code,catchcode) do { printf(">>> " #code); code; printf("<<< " #code); } while(false);
 #endif
 
 extern "C" UNITY_INTERFACE_EXPORT void* VPCreate(void* userData, VideoStatusCallback statusCallback, VideoLogCallback logCallback, VideoGetValueCallback getValueCallback)
