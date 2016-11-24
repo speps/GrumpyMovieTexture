@@ -106,7 +106,7 @@ public class VideoPlayer : MonoBehaviour
         currentAudioConfiguration = AudioSettings.GetConfiguration();
         handle = GCHandle.Alloc(this);
         player = VPCreate(GCHandle.ToIntPtr(handle), OnStatusCallback, OnLogCallback, OnGetValueCallback);
-        VPSetDebugEnabled(player, true);
+        //VPSetDebugEnabled(player, true);
         var shader = Shader.Find("Hidden/GrumpyConvertRGB");
         material = new Material(shader);
 
@@ -122,7 +122,11 @@ public class VideoPlayer : MonoBehaviour
         VPDestroy(player);
         player = IntPtr.Zero;
         handle.Free();
-        AudioSettings.Reset(currentAudioConfiguration);
+        var audioSource = GetComponent<AudioSource>();
+        if (audioSource != null)
+        {
+            AudioSettings.Reset(currentAudioConfiguration);
+        }
     }
 
     public void Open(string fileName)
@@ -271,20 +275,20 @@ public class VideoPlayer : MonoBehaviour
         {
             OpenResource();
         }
-        if (!IsCorrectAudioConfiguration())
-        {
-            if (!AudioSettings.Reset(newAudioConfiguration))
-            {
-                Debug.LogError("Problem setting audio settings");
-            }
-            else
-            {
-                lastAudioConfiguration = newAudioConfiguration;
-            }
-        }
         var audioSource = GetComponent<AudioSource>();
         if (audioSource != null)
         {
+            if (!IsCorrectAudioConfiguration())
+            {
+                if (!AudioSettings.Reset(newAudioConfiguration))
+                {
+                    Debug.LogError("Problem setting audio settings");
+                }
+                else
+                {
+                    lastAudioConfiguration = newAudioConfiguration;
+                }
+            }
             audioSource.Play();
         }
         VPPlay(player);
@@ -307,7 +311,7 @@ public class VideoPlayer : MonoBehaviour
 
     void OnAudioFilterRead(float[] data, int channels)
     {
-        if (IsPlaying)
+        //if (IsPlaying)
         {
             VPPCMRead(player, data, data.Length / channels);
         }

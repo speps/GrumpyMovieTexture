@@ -6,6 +6,25 @@
 #include <stdarg.h>
 #include <regex>
 
+#if __ANDROID__
+#include <android/log.h>
+void VideoPlayer::log(const char* format, ...) const
+{
+    if (!_debugEnabled)
+    {
+        return;
+    }
+    va_list args;
+    va_start(args, format);
+    __android_log_vprint(ANDROID_LOG_DEBUG, "LOG_GMT", format, args);
+    va_end(args);
+}
+#else
+void VideoPlayer::log(const char* format, ...) const
+{
+}
+#endif
+
 void VideoPlayer::zipLogCallback(void* userData, const char* text)
 {
     ((VideoPlayer*)userData)->log(text);
@@ -27,27 +46,11 @@ VideoPlayer::~VideoPlayer()
 void VideoPlayer::destroy()
 {
     stop();
+    close();
     _statusCallback = nullptr;
     _dataCallback = nullptr;
     _createTextureCallback = nullptr;
     _uploadTextureCallback = nullptr;
-}
-
-void VideoPlayer::log(const char* format, ...)
-{
-    if (!_debugEnabled)
-    {
-        return;
-    }
-    char temp[1024];
-    va_list args;
-    va_start(args, format);
-    vsnprintf(temp, sizeof(temp), format, args);
-    va_end(args);
-    if (_logCallback != nullptr)
-    {
-        _logCallback(_userData, temp);
-    }
 }
 
 void VideoPlayer::setState(VideoPlayerState newState)
@@ -479,12 +482,14 @@ void VideoPlayer::threadDecode(VideoPlayer* p)
         {
             if (!p->waitPause())
             {
+                p->log("break pause\n");
                 break;
             }
             assert(p->_state != VideoPlayerState::Paused);
         }
         if (p->_state != VideoPlayerState::Playing)
         {
+            p->log("break state\n");
             break;
         }
 
@@ -547,25 +552,26 @@ void VideoPlayer::threadDecode(VideoPlayer* p)
         const bool flushed = cachedAudioTotalSamples == 0 && cachedVideoNumFrames == 0;
         if (endOfFile && !audioReady && !videoReady && flushed)
         {
+            p->log("break eof\n");
             p->setState(VideoPlayerState::Stopped);
             break;
         }
 
-        p->_oggMutex.lock();
         if ((p->_oggState.hasVorbis && !audioReady && cachedAudioTotalSamples < p->_audioBufferSize)
             || (p->_oggState.hasTheora && !videoReady && cachedVideoNumFrames < VIDEO_PLAYER_VIDEO_BUFFERED_FRAMES))
         {
+            p->_oggMutex.lock();
             bool success = p->readStream();
             while (success && ogg_sync_pageout(&p->_oggState.oggSyncState, &page) > 0)
             {
                 p->_oggState.pagein(&page);
             }
+            p->_oggMutex.unlock();
             if (!success)
             {
                 endOfFile = true;
             }
         }
-        p->_oggMutex.unlock();
 
         if (!streaming && (!p->_oggState.hasVorbis || audioReady) && (!p->_oggState.hasTheora || videoReady))
         {
@@ -603,6 +609,8 @@ void VideoPlayer::threadDecode(VideoPlayer* p)
     {
         p->shutAudio();
     }
+
+    p->close();
 }
 
 void VideoPlayer::launchDecode()
@@ -612,7 +620,9 @@ void VideoPlayer::launchDecode()
 
 void VideoPlayer::waitDecode()
 {
+    log("join...");
     _threadDecode.join();
+    log("joined\n");
 }
 
 void VideoPlayer::signalPause()
@@ -635,7 +645,7 @@ bool VideoPlayer::open()
     if (!readHeaders())
     {
         log("failed to read headers");
-        setState(VideoPlayerState::Stopped);
+        close();
         return false;
     }
 
@@ -643,9 +653,34 @@ bool VideoPlayer::open()
     return true;
 }
 
+void VideoPlayer::close()
+{
+    log("closing...");
+    {
+        std::unique_lock<std::mutex> lock(_audioMutex);
+        _audioFrames.clear();
+        _audioTotalSamples = 0;
+    }
+    {
+        std::unique_lock<std::mutex> lock(_videoMutex);
+        _videoFrames.clear();
+    }
+
+    if (_fileStream != nullptr)
+    {
+        fclose(_fileStream);
+        _fileStream = nullptr;
+    }
+    if (_zipStream.isOpen())
+    {
+        _zipStream.close();
+    }
+    log("closed\n");
+}
+
 bool VideoPlayer::openCallback(VideoDataCallback dataCallback, VideoCreateTextureCallback createTextureCallback, VideoUploadTextureCallback uploadTextureCallback)
 {
-    stop();
+    close();
 
     if (dataCallback == nullptr || createTextureCallback == nullptr || uploadTextureCallback == nullptr)
     {
@@ -661,7 +696,7 @@ bool VideoPlayer::openCallback(VideoDataCallback dataCallback, VideoCreateTextur
 
 bool VideoPlayer::openFile(std::string filePath, VideoCreateTextureCallback createTextureCallback, VideoUploadTextureCallback uploadTextureCallback)
 {
-    stop();
+    close();
 
     if (filePath.empty())
     {
@@ -711,6 +746,7 @@ void VideoPlayer::play()
         return;
     }
 
+    log("play\n");
     setState(VideoPlayerState::Playing);
 
     launchDecode();
@@ -729,31 +765,14 @@ void VideoPlayer::resume()
 
 void VideoPlayer::stop()
 {
-    {
-        std::unique_lock<std::mutex> lock(_audioMutex);
-        _audioFrames.clear();
-        _audioTotalSamples = 0;
-    }
-    {
-        std::unique_lock<std::mutex> lock(_videoMutex);
-        _videoFrames.clear();
-    }
-
+    log("stopping...");
     if (_threadDecode.joinable())
     {
         setState(VideoPlayerState::Stopped);
         cancelPause();
         waitDecode();
     }
-
-    if (_fileStream != nullptr)
-    {
-        fclose(_fileStream);
-    }
-    if (_zipStream.isOpen())
-    {
-        _zipStream.close();
-    }
+    log("stopped\n");
 }
 
 void VideoPlayer::update(float timeStep)

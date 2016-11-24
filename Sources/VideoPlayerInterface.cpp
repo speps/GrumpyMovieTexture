@@ -8,7 +8,8 @@
 #define UNITY_INTERFACE_EXPORT
 #endif
 
-#if ANDROID && __arm__ && 0
+#if ANDROID || __ANDROID__
+#if __arm__ && 0
 #include <coffeecatch.h>
 #define SAFE_CALL(code) \
     COFFEE_TRY() { \
@@ -25,6 +26,15 @@
     fprintf(stderr, "**FATAL ERROR: %s\n", message); \
     } COFFEE_END(); \
     catchcode;
+#else
+    #include <android/log.h>
+    #define SAFE_CALL(code) do { \
+        code; \
+        } while(false);
+    #define SAFE_CALL_RET(code,catchcode) do { \
+        code; \
+        } while(false);
+#endif
 #else
     #define SAFE_CALL(code) do { printf(">>> " #code); code; printf("<<< " #code); } while(false);
     #define SAFE_CALL_RET(code,catchcode) do { printf(">>> " #code); code; printf("<<< " #code); } while(false);

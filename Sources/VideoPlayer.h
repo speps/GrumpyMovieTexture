@@ -21,10 +21,8 @@
 #define VIDEO_PLAYER_AUDIO_BUFFER_SIZE 4096
 #define VIDEO_PLAYER_AUDIO_BUFFERED_FRAMES 4
 #define VIDEO_PLAYER_VIDEO_BUFFERED_FRAMES 3
-#define MALLOC malloc
-#define FREE free
 
-enum class VideoPlayerState
+enum class VideoPlayerState : uint32_t
 {
     None,
     Initialized,
@@ -53,7 +51,7 @@ class VideoPlayer
 private:
     void* _userData;
     bool _debugEnabled;
-    VideoPlayerState _state;
+    std::atomic<VideoPlayerState> _state;
     FILE* _fileStream;
     ZipStream _zipStream;
     VideoStatusCallback _statusCallback;
@@ -150,6 +148,7 @@ private:
     void setState(VideoPlayerState newState);
 
     bool open();
+    void close();
 
     bool readStream(); // returns false at end of file
     bool readHeaders();
@@ -171,7 +170,7 @@ private:
     void cancelPause();
     bool waitPause();
 
-    void log(const char* format, ...);
+    void log(const char* format, ...) const;
     static void zipLogCallback(void* userData, const char* text);
 public:
     VideoPlayer(void* userData, VideoStatusCallback statusCallback, VideoLogCallback logCallback, VideoGetValueCallback getValueCallback);
