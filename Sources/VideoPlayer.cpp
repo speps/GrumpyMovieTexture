@@ -19,6 +19,23 @@ void VideoPlayer::log(const char* format, ...) const
     __android_log_vprint(ANDROID_LOG_DEBUG, "LOG_GMT", format, args);
     va_end(args);
 }
+#elif WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+void VideoPlayer::log(const char* format, ...) const
+{
+    if (!_debugEnabled)
+    {
+        return;
+    }
+    char temp[1024];
+    va_list args;
+    va_start(args, format);
+    vsprintf_s(temp, format, args);
+    va_end(args);
+    OutputDebugStringA(temp);
+    OutputDebugStringA("\n");
+}
 #else
 void VideoPlayer::log(const char* format, ...) const
 {
@@ -615,6 +632,10 @@ void VideoPlayer::threadDecode(VideoPlayer* p)
 
 void VideoPlayer::launchDecode()
 {
+    if (_threadDecode.joinable())
+    {
+        waitDecode();
+    }
     _threadDecode = std::thread(threadDecode, this);
 }
 
